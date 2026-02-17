@@ -1,0 +1,155 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Add lib to load path if running from gem directory
+$LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
+
+require "fixtury_bot"
+
+class CLI
+  def self.run(args)
+    new(args).run
+  end
+
+  def initialize(args)
+    @args = args
+  end
+
+  def run
+    command = @args.shift
+
+    case command
+    when "generate"
+      generate_command
+    when "validate"
+      validate_command
+    when "version", "-v", "--version"
+      version_command
+    when "help", "-h", "--help", nil
+      help_command
+    else
+      puts "Unknown command: #{command}"
+      puts
+      help_command
+      exit 1
+    end
+  end
+
+  private
+
+  def generate_command
+    fixtury_name = @args.shift
+    load_rails_environment
+
+    if fixtury_name
+      puts "Generating fixtury: #{fixtury_name}"
+      FixturyBot.generate(fixtury_name)
+    else
+      puts "Generating all fixturys"
+      FixturyBot.generate
+    end
+
+    puts "Done!"
+  end
+
+  def validate_command
+    fixtury_name = @args.shift
+    load_rails_environment
+
+    puts fixtury_name ? "Validating fixtury: #{fixtury_name}" : "Validating all fixturys"
+
+    result = FixturyBot.validate(fixtury_name)
+
+    if result.valid?
+      puts "All fixtures are valid!"
+      exit 0
+    else
+      puts "Fixture validation failed:"
+      result.differences.each do |fixtury, diffs|
+        puts "\nFixtury: #{fixtury}"
+        diffs.each do |diff|
+          case diff[:type]
+          when :new
+            puts "  + New fixture: #{diff[:database]}/#{diff[:table]}/#{diff[:fixture]}"
+          when :removed
+            puts "  - Removed fixture: #{diff[:database]}/#{diff[:table]}/#{diff[:fixture]}"
+          when :modified
+            puts "  ~ Modified fixture: #{diff[:database]}/#{diff[:table]}/#{diff[:fixture]}"
+            diff[:changes].each do |attr, change|
+              puts "      #{attr}: #{change[:committed].inspect} → #{change[:generated].inspect}"
+            end
+          end
+        end
+      end
+      exit 1
+    end
+  end
+
+  def version_command
+    puts "fixtury_bot #{FixturyBot::VERSION}"
+  end
+
+  def help_command
+    puts <<~HELP
+      Usage: fixtury_bot <command> [options]
+
+      Commands:
+        generate [fixtury]   Generate all fixturys or a specific fixtury to fixtures
+        validate [fixtury]   Validate all fixtures or a specific fixtury
+        version              Show version
+        help                 Show this help message
+
+      Examples:
+        fixtury_bot generate                    # Generate all fixturys
+        fixtury_bot generate checkout_flow      # Generate specific fixtury
+        fixtury_bot validate                    # Validate all fixtures
+        fixtury_bot validate checkout_flow      # Validate specific fixtury
+    HELP
+  end
+
+  def load_rails_environment
+    if rails_app?
+      # Set RAILS_ENV to test to ensure FactoryBot and test dependencies are loaded
+      ENV["RAILS_ENV"] ||= "test"
+
+      # First try to load spec_helper which sets up the full test environment
+      # (including WebMock stubs, database cleaning, etc.)
+      spec_helper_path = File.join(Dir.pwd, "spec", "spec_helper.rb")
+      test_helper_path = File.join(Dir.pwd, "test", "test_helper.rb")
+
+      if File.exist?(spec_helper_path)
+        # Add spec to load path so relative requires work
+        $LOAD_PATH.unshift(File.join(Dir.pwd, "spec"))
+        # RSpec must be loaded before spec_helper
+        require "rspec"
+        require spec_helper_path
+      elsif File.exist?(test_helper_path)
+        $LOAD_PATH.unshift(File.join(Dir.pwd, "test"))
+        require test_helper_path
+      else
+        # Fallback to just loading Rails environment
+        require_relative find_rails_boot_file
+      end
+    end
+    load_definitions
+  end
+
+  def load_definitions
+    fixtury_path = FixturyBot.configuration.fixtury_path
+    pattern = File.join(fixtury_path, "**", "*.rb")
+
+    Dir.glob(pattern).sort.each do |file|
+      require File.expand_path(file, Dir.pwd)
+    end
+  end
+
+  def rails_app?
+    File.exist?("config/environment.rb")
+  end
+
+  def find_rails_boot_file
+    File.expand_path("config/environment.rb", Dir.pwd)
+  end
+end
+
+CLI.run(ARGV)
