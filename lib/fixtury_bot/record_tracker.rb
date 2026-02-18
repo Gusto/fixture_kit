@@ -91,7 +91,7 @@ module FixturyBot
       @model_counters[model_key] += 1
       counter = @model_counters[model_key]
 
-      base_name = entry.record.class.name.underscore.gsub("/", "_")
+      base_name = ActiveSupport::Inflector.underscore(entry.record.class.name).gsub("/", "_")
       entry.define_singleton_method(:auto_generated_name) { :"#{base_name}_#{counter}" }
     end
   end

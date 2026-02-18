@@ -9,11 +9,6 @@
 *.gem
 Gemfile.lock
 
-# IDE
-.idea/
-*.swp
-*.swo
-.vscode/
-
 # Test artifacts
 /spec/fixtures/fixtury_bot/
+/spec/examples.txt

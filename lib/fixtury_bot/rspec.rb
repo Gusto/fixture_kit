@@ -1,68 +1,58 @@
 # frozen_string_literal: true
 
-module FixturyBot
-  class FixturyAccessor
-    def initialize(fixture_set)
-      @fixture_set = fixture_set
-    end
+require "fixtury_bot"
 
-    def method_missing(name, *args, &block)
-      if @fixture_set.key?(name.to_sym)
-        @fixture_set[name.to_sym]
-      else
-        super
+module FixturyBot
+  module RSpec
+    # Class methods (extended via config.extend)
+    module ClassMethods
+      # Declare which fixtury to use for this example group.
+      # Can be overridden in nested groups (like `let`).
+      #
+      # Example:
+      #   RSpec.describe User do
+      #     fixtury :basic_users
+      #
+      #     it "has users" do
+      #       expect(fixtury.alice).to be_present
+      #     end
+      #
+      #     context "with admins" do
+      #       fixtury :admin_users  # Override
+      #
+      #       it "has admin" do
+      #         expect(fixtury.admin).to be_present
+      #       end
+      #     end
+      #   end
+      def fixtury(name)
+        metadata[:fixtury_name] = name.to_sym
       end
     end
 
-    def respond_to_missing?(name, include_private = false)
-      @fixture_set.key?(name.to_sym) || super
-    end
+    # Instance methods (included via config.include)
+    module InstanceMethods
+      # Returns the FixtureSet for the current example's fixtury.
+      # Access exposed records as methods: fixtury.alice, fixtury.posts
+      def fixtury
+        @_fixtury_loaded ||= begin
+          fixtury_name = self.class.metadata[:fixtury_name]
+          raise "No fixtury declared for this example group. Use `fixtury :name` in your describe/context block." unless fixtury_name
 
-    def [](name)
-      @fixture_set[name.to_sym]
-    end
-  end
-
-  module RSpec
-    def self.included(base)
-      base.extend(ClassMethods)
-    end
-
-    module ClassMethods
-      def fixtury(*fixtury_names)
-        before(:each) do
-          if FixturyBot.current_fixture_set.any?
-            previously_loaded = FixturyBot.current_fixture_set.keys.first(3).join(", ")
-            raise FixturyBot::DuplicateFixturyError, <<~ERROR
-              fixtury called multiple times for the same example.
-
-              Already loaded fixtures include: #{previously_loaded}...
-              Attempting to load: #{fixtury_names.join(", ")}
-
-              This usually means fixtury was called in both a parent and nested describe block.
-              Only call fixtury once per example - use the most specific fixtury you need.
-            ERROR
-          end
-          FixturyBot.load_definitions(*fixtury_names)
+          FixturyBot.load_fixtury(fixtury_name)
         end
       end
-    end
-
-    def fixtury
-      FixturyAccessor.new(FixturyBot.current_fixture_set)
-    end
-
-    def fixtury_record(name)
-      FixturyBot.current_fixture_set[name.to_sym]
     end
   end
 end
 
+# Configure RSpec integration
 RSpec.configure do |config|
-  config.include FixturyBot::RSpec
+  config.extend FixturyBot::RSpec::ClassMethods
+  config.include FixturyBot::RSpec::InstanceMethods
 
-  # Clear fixture set after each test to prevent state leakage
-  config.after(:each) do
-    FixturyBot.clear_current_fixture_set
+  config.before(:suite) do
+    fixtury_path = FixturyBot.configuration.fixtury_path
+    Dir[File.join(fixtury_path, "**/*.rb")].each { |f| require f }
   end
-end if defined?(RSpec)
+end

@@ -1,0 +1,11 @@
+test:
+  primary:
+    adapter: sqlite3
+    database: tmp/primary_test.sqlite3
+    pool: 5
+    timeout: 5000
+  analytics:
+    adapter: sqlite3
+    database: tmp/analytics_test.sqlite3
+    pool: 5
+    timeout: 5000

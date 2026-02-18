@@ -4,11 +4,10 @@ module FixturyBot
   ExecutionResult = Struct.new(:records, :exposed, keyword_init: true)
 
   class Fixtury
-    attr_reader :name, :block, :source_file
+    attr_reader :name, :block
 
-    def initialize(name, source_file: nil, &block)
+    def initialize(name, &block)
       @name = name.to_sym
-      @source_file = source_file
       @block = block
     end
 
