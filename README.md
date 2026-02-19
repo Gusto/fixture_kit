@@ -29,7 +29,9 @@ end
 
 ### 1. Define a Fixture
 
-Create fixture files in `spec/fixture_kit/`:
+Create fixture files in `spec/fixture_kit/`. Use whatever method you prefer to create records—FixtureKit doesn't care.
+
+**Using ActiveRecord directly:**
 
 ```ruby
 # spec/fixture_kit/bookstore.rb
@@ -42,6 +44,20 @@ FixtureKit.define do
   end
 
   featured = Book.create!(title: "Dune", store: store, featured: true)
+
+  expose(store: store, owner: owner, books: books, featured: featured)
+end
+```
+
+**Using FactoryBot:**
+
+```ruby
+# spec/fixture_kit/bookstore.rb
+FixtureKit.define do
+  store = FactoryBot.create(:store, name: "Powell's Books")
+  owner = FactoryBot.create(:user, :admin, store: store)
+  books = FactoryBot.create_list(:book, 3, store: store)
+  featured = FactoryBot.create(:book, :bestseller, store: store, title: "Dune")
 
   expose(store: store, owner: owner, books: books, featured: featured)
 end
