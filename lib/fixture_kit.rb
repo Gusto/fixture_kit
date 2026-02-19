@@ -7,6 +7,7 @@ module FixtureKit
   class Error < StandardError; end
   class DuplicateFixtureError < Error; end
   class DuplicateNameError < Error; end
+  class CacheMissingError < Error; end
 
   autoload :VERSION,         File.expand_path("fixture_kit/version", __dir__)
   autoload :Configuration,   File.expand_path("fixture_kit/configuration", __dir__)

@@ -4,11 +4,13 @@ module FixtureKit
   class Configuration
     attr_writer :fixture_path
     attr_writer :cache_path
+    attr_accessor :autogenerate
 
     def initialize
       @fixture_path = nil
       @cache_path = nil
       @setup = nil
+      @autogenerate = true
     end
 
     # Set a block to run before each fixture is executed.

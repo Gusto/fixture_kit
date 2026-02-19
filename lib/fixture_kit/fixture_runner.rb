@@ -9,10 +9,22 @@ module FixtureKit
     end
 
     def run
-      if @cache.exists?
-        replay_from_cache
-      else
+      if FixtureKit.configuration.autogenerate
+        # Always regenerate cache when autogenerate is true
         execute_and_cache
+      else
+        # When autogenerate is false, cache must exist
+        unless @cache.exists?
+          raise FixtureKit::CacheMissingError, <<~ERROR
+            Cache not found for fixture '#{@fixture_name}'.
+
+            Run your tests with autogenerate enabled to generate the cache:
+              FixtureKit.configuration.autogenerate = true
+
+            Or generate caches by running your test suite once with autogenerate enabled.
+          ERROR
+        end
+        replay_from_cache
       end
     end
 

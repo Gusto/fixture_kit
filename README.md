@@ -8,10 +8,7 @@ Test data setup is slow. Every `Model.create!` or `FactoryBot.create` hits the d
 
 ## The Solution
 
-FixtureKit caches database records after the first test run. Subsequent runs replay the cached data using `upsert_all`, skipping the expensive setup code entirely.
-
-- **First run**: Execute your setup code, capture all INSERTs, cache to disk
-- **Subsequent runs**: Replay cached records instantly
+FixtureKit caches database records to disk. When `autogenerate` is enabled (the default), caches are regenerated on every test run. When disabled, caches are replayed instantly using `upsert_all`.
 
 Combined with RSpec's transactional fixtures, each test runs in a transaction that rolls back—so cached data can be reused across tests without cleanup.
 
@@ -129,12 +126,41 @@ FixtureKit.configure do |config|
   # Where cache files are stored (default: tmp/cache/fixture_kit)
   config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
 
+  # Whether to regenerate caches on every run (default: true)
+  config.autogenerate = true
+
   # Run before each fixture executes (e.g., seed random data)
   config.setup do
     Faker::Config.random = Random.new(12345)
   end
 end
 ```
+
+### Autogenerate
+
+When `autogenerate` is `true` (the default), FixtureKit regenerates cache files on every test run. This ensures your test data always matches your fixture definitions.
+
+When `autogenerate` is `false`, FixtureKit expects cache files to already exist. If a cache is missing, it raises `FixtureKit::CacheMissingError`. This is useful in CI where you want to pre-generate caches and fail fast if they're missing.
+
+**CI Setup:**
+
+```ruby
+FixtureKit.configure do |config|
+  config.autogenerate = !ENV["CI"]
+end
+```
+
+Pre-generate caches before running tests on CI:
+
+```bash
+# Generate caches locally or in a CI setup step
+AUTOGENERATE=1 bundle exec rspec --dry-run
+
+# Or run the full suite once with autogenerate enabled
+bundle exec rspec
+```
+
+Commit the cache directory or cache it between CI runs for faster test execution.
 
 ## Nested Fixtures
 
@@ -153,11 +179,11 @@ fixture "teams/sales"
 
 ## How It Works
 
-1. **First run**: FixtureKit executes your definition block, subscribes to `sql.active_record` notifications to track which tables received INSERTs, then queries all records from those tables and caches them to a YAML file.
+1. **With autogenerate enabled** (default): FixtureKit executes your definition block, subscribes to `sql.active_record` notifications to track which tables received INSERTs, queries all records from those tables, and caches them to a YAML file.
 
-2. **Subsequent runs**: FixtureKit loads the cache and replays records using `upsert_all` with `on_duplicate: :skip`. This is much faster than re-running your setup code.
+2. **With autogenerate disabled**: FixtureKit loads the cache and replays records using `upsert_all` with `on_duplicate: :skip`. This is much faster than re-running your setup code.
 
-3. **Transaction isolation**: RSpec's `use_transactional_fixtures` wraps each test in a transaction that rolls back, so cached data doesn't persist between tests.
+3. **Transaction isolation**: RSpec's `use_transactional_fixtures` wraps each test in a transaction that rolls back, so data doesn't persist between tests.
 
 ## Cache Management
 
