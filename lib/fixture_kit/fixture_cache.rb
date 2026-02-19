@@ -3,19 +3,19 @@
 require "yaml"
 require "fileutils"
 
-module FixturyBot
-  class FixturyCache
+module FixtureKit
+  class FixtureCache
     attr_reader :records, :exposed
 
-    def initialize(fixtury_name, cache_path)
-      @fixtury_name = fixtury_name
+    def initialize(fixture_name, cache_path)
+      @fixture_name = fixture_name
       @cache_path = cache_path
       @records = {}
       @exposed = {}
     end
 
     def cache_file_path
-      File.join(@cache_path, "#{@fixtury_name}.yml")
+      File.join(@cache_path, "#{@fixture_name}.yml")
     end
 
     def exists?
@@ -36,7 +36,7 @@ module FixturyBot
       @records = records_by_model
       @exposed = exposed_mapping
 
-      FileUtils.mkdir_p(@cache_path)
+      FileUtils.mkdir_p(File.dirname(cache_file_path))
 
       data = {
         "records" => @records,

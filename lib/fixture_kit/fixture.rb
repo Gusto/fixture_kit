@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-module FixturyBot
+module FixtureKit
   ExecutionResult = Struct.new(:records, :exposed, keyword_init: true)
 
-  class Fixtury
+  class Fixture
     attr_reader :name, :block
 
     def initialize(name, &block)
@@ -14,7 +14,7 @@ module FixturyBot
     def execute
       tracker = RecordTracker.new
 
-      context = FixturyContext.new(tracker)
+      context = FixtureContext.new(tracker)
       context.instance_eval(&block) if block
 
       exposed = context.exposed_metadata(tracker)
@@ -23,7 +23,7 @@ module FixturyBot
     end
   end
 
-  class FixturyContext
+  class FixtureContext
     def initialize(tracker)
       @tracker = tracker
       @exposed = {}
@@ -44,10 +44,10 @@ module FixturyBot
         name = name.to_sym
 
         if @exposed.key?(name)
-          raise FixturyBot::DuplicateNameError, <<~ERROR
+          raise FixtureKit::DuplicateNameError, <<~ERROR
             Duplicate expose name :#{name}
 
-            A record with this name has already been exposed in this fixtury.
+            A record with this name has already been exposed in this fixture.
           ERROR
         end
 

@@ -7,7 +7,7 @@ require "active_record/railtie"
 
 Bundler.require(*Rails.groups)
 
-require "fixtury_bot"
+require "fixture_kit"
 
 module Dummy
   class Application < Rails::Application

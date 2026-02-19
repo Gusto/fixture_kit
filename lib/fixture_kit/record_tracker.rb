@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module FixturyBot
+module FixtureKit
   class RecordTracker
     RecordEntry = Struct.new(:record, :factory_name, :traits, :database_name, keyword_init: true) do
       attr_accessor :assigned_name
@@ -46,10 +46,10 @@ module FixturyBot
       raise ArgumentError, "Record not tracked" unless entry
 
       if @name_to_record.key?(new_name)
-        raise FixturyBot::DuplicateNameError, <<~ERROR
+        raise FixtureKit::DuplicateNameError, <<~ERROR
           Duplicate fixture name :#{new_name}
 
-          A record with this name already exists in this fixtury.
+          A record with this name already exists in this fixture.
         ERROR
       end
 
@@ -59,29 +59,9 @@ module FixturyBot
       @name_to_record[new_name] = entry.record
     end
 
-    def find_by_name(name)
-      @name_to_record[name.to_sym]
-    end
-
     def find_by_record(record)
       entry = @records.find { |e| e.record == record }
       entry&.fixture_name
-    end
-
-    def find_by_model_and_id(model_class, id)
-      entry = @records.find { |e| e.record.class == model_class && e.record.id == id }
-      entry&.fixture_name
-    end
-
-    def records_by_database
-      @records.group_by(&:database_name)
-    end
-
-    def records_by_table(database_name = nil)
-      records_to_group = database_name ? records_by_database[database_name] : @records
-      return {} unless records_to_group
-
-      records_to_group.group_by { |entry| entry.record.class.table_name }
     end
 
     private

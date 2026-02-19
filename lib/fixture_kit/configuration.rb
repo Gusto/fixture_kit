@@ -1,23 +1,21 @@
 # frozen_string_literal: true
 
-module FixturyBot
+module FixtureKit
   class Configuration
-    attr_writer :fixtury_path
+    attr_writer :fixture_path
     attr_writer :cache_path
-    attr_accessor :output
 
     def initialize
-      @fixtury_path = nil
+      @fixture_path = nil
       @cache_path = nil
       @setup = nil
-      @output = $stdout
     end
 
-    # Set a block to run before each fixtury is executed.
+    # Set a block to run before each fixture is executed.
     # Useful for setting a fixed seed for Faker/FFaker.
     #
     # Example:
-    #   FixturyBot.configure do |config|
+    #   FixtureKit.configure do |config|
     #     config.setup do
     #       FFaker::Random.seed = 12345
     #       Faker::Config.random = Random.new(12345)
@@ -31,8 +29,8 @@ module FixturyBot
       end
     end
 
-    def fixtury_path
-      @fixtury_path ||= detect_fixtury_path
+    def fixture_path
+      @fixture_path ||= detect_fixture_path
     end
 
     def cache_path
@@ -41,18 +39,18 @@ module FixturyBot
 
     private
 
-    def detect_fixtury_path
+    def detect_fixture_path
       if Dir.exist?("spec")
-        "spec/fixtury"
+        "spec/fixture_kit"
       elsif Dir.exist?("test")
-        "test/fixtury"
+        "test/fixture_kit"
       else
-        "spec/fixtury"
+        "spec/fixture_kit"
       end
     end
 
     def detect_cache_path
-      "tmp/fixtury_cache"
+      "tmp/cache/fixture_kit"
     end
   end
 end

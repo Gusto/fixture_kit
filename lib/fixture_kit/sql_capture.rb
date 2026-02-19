@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module FixturyBot
+module FixtureKit
   class SqlCapture
     def initialize
       @tables_by_database = Hash.new { |h, k| h[k] = Set.new }
@@ -21,10 +21,6 @@ module FixturyBot
     def stop
       ActiveSupport::Notifications.unsubscribe(@subscription) if @subscription
       @subscription = nil
-      @tables_by_database
-    end
-
-    def tables_by_database
       @tables_by_database
     end
   end

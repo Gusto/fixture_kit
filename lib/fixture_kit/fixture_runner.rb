@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-module FixturyBot
-  class FixturyRunner
-    def initialize(fixtury_name, cache_path:, model_registry: nil)
-      @fixtury_name = fixtury_name.to_sym
-      @cache = FixturyCache.new(@fixtury_name, cache_path)
+module FixtureKit
+  class FixtureRunner
+    def initialize(fixture_name, cache_path:, model_registry: nil)
+      @fixture_name = fixture_name.to_sym
+      @cache = FixtureCache.new(@fixture_name, cache_path)
       @model_registry = model_registry || default_model_registry
     end
 
@@ -19,18 +19,18 @@ module FixturyBot
     private
 
     def execute_and_cache
-      fixtury = FixturyRegistry.find(@fixtury_name)
-      raise ArgumentError, "Fixtury '#{@fixtury_name}' not found" unless fixtury
+      fixture = FixtureRegistry.find(@fixture_name)
+      raise ArgumentError, "Fixture '#{@fixture_name}' not found" unless fixture
 
       # Start capturing SQL
       capture = SqlCapture.new
       capture.start
 
       # Run setup hook if configured
-      FixturyBot.configuration.setup&.call
+      FixtureKit.configuration.setup&.call
 
-      # Execute fixtury definition
-      result = fixtury.execute
+      # Execute fixture definition
+      result = fixture.execute
 
       # Stop capturing and get affected tables
       tables_by_db = capture.stop

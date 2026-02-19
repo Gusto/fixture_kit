@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module FixturyBot
+module FixtureKit
   class FixtureSet
     def initialize(exposed_records)
       @records = exposed_records

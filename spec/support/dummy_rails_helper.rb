@@ -6,14 +6,13 @@ ENV["RAILS_ENV"] = "test"
 
 require_relative "../dummy/config/environment"
 
-require "fixtury_bot"
+require "fixture_kit"
 require "factory_bot"
 
 # Load factories from the dummy app
 Dir[File.join(__dir__, "../dummy/spec/factories/**/*.rb")].each { |f| require f }
 
-# Load fixtury definitions from the dummy app
-Dir[File.join(__dir__, "../dummy/spec/fixtury/**/*.rb")].each { |f| require f }
+# Fixture definitions are loaded on-demand by FixtureKit.load_fixture
 
 # Create schema for both databases
 def setup_databases
@@ -75,9 +74,8 @@ def setup_databases
   AnalyticsRecord.connection.add_index :time_entries, :external_task_id
 end
 
-# Configure FixturyBot
-FixturyBot.configure do |config|
-  config.fixtury_path = Rails.root.join("spec/fixtury").to_s
-  config.cache_path = Rails.root.join("tmp/fixtury_cache").to_s
-  config.output = StringIO.new
+# Configure FixtureKit
+FixtureKit.configure do |config|
+  config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
+  config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
 end

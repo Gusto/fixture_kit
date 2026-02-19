@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
-require_relative "lib/fixtury_bot/version"
+require_relative "lib/fixture_kit/version"
 
 Gem::Specification.new do |spec|
-  spec.name = "fixtury_bot"
-  spec.version = FixturyBot::VERSION
+  spec.name = "fixture_kit"
+  spec.version = FixtureKit::VERSION
   spec.authors = ["Ngan Pham"]
   spec.email = ["ngan.pham@gusto.com"]
 
-  spec.summary = "Generate Rails fixtures from Factory Bot definitions"
-  spec.description = "FixturyBot combines the maintainability of Factory Bot with the speed of Rails fixtures. Define fixturys using Factory Bot syntax, generate fixture files, and load those fixtures in your tests for fast, reliable test data."
-  spec.homepage = "https://github.com/Gusto/fixtury_bot"
+  spec.summary = "Fast test fixtures powered by Factory Bot and SQL caching"
+  spec.description = "FixtureKit combines the maintainability of Factory Bot with lightning-fast test setup. Define fixtures using Factory Bot syntax, and FixtureKit caches the SQL to replay in subsequent test runs."
+  spec.homepage = "https://github.com/Gusto/fixture_kit"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.3.0"
 
@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
 
   spec.files = Dir["lib/**/*.rb", "exe/*", "LICENSE", "README.md"]
   spec.bindir = "exe"
-  spec.executables = ["fixtury_bot", "fixtury"]
+  spec.executables = []
   spec.require_paths = ["lib"]
 
   spec.add_dependency "activesupport", ">= 8.0"

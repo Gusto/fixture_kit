@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-FixturyBot.define(:project_management) do
+FixtureKit.define do
   # Primary database: Team members
   alice = create(:user, :admin, name: "Alice Chen", email: "alice@example.com")
   bob = create(:user, :manager, name: "Bob Smith", email: "bob@example.com")
