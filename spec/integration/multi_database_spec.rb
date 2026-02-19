@@ -42,11 +42,6 @@ RSpec.describe "Multi-database integration" do
       expect(fixture.api_time_entries.size).to eq(2)
       expect(fixture.api_time_entries).to all(be_a(TimeEntry))
     end
-
-    it "supports hash-style access" do
-      expect(fixture[:alice]).to be_a(User)
-      expect(fixture[:web_app]).to be_a(Project)
-    end
   end
 
   describe "soft foreign key preservation" do

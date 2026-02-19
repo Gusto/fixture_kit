@@ -4,15 +4,8 @@ module FixtureKit
   class FixtureSet
     def initialize(exposed_records)
       @records = exposed_records
+      @records.each_value { |value| value.freeze if value.is_a?(Array) }
       define_accessors
-    end
-
-    def [](name)
-      @records[name.to_sym]
-    end
-
-    def to_h
-      @records.dup
     end
 
     private
