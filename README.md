@@ -138,7 +138,7 @@ end
 
 ### Autogenerate
 
-When `autogenerate` is `true` (the default), FixtureKit regenerates cache files on every test run. This ensures your test data always matches your fixture definitions.
+When `autogenerate` is `true` (the default), FixtureKit clears all caches at the start of each test run, then regenerates them on first use. Subsequent tests that use the same fixture reuse the cache from earlier in the run. This ensures your test data always matches your fixture definitions.
 
 When `autogenerate` is `false`, FixtureKit expects cache files to already exist. If a cache is missing, it raises `FixtureKit::CacheMissingError`. This is useful in CI where you want to pre-generate caches and fail fast if they're missing.
 

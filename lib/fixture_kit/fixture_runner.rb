@@ -9,22 +9,19 @@ module FixtureKit
     end
 
     def run
-      if FixtureKit.configuration.autogenerate
-        # Always regenerate cache when autogenerate is true
+      if @cache.exists?
+        execute_from_cache
+      elsif FixtureKit.configuration.autogenerate
         execute_and_cache
       else
-        # When autogenerate is false, cache must exist
-        unless @cache.exists?
-          raise FixtureKit::CacheMissingError, <<~ERROR
-            Cache not found for fixture '#{@fixture_name}'.
+        raise FixtureKit::CacheMissingError, <<~ERROR
+          Cache not found for fixture '#{@fixture_name}'.
 
-            Run your tests with autogenerate enabled to generate the cache:
-              FixtureKit.configuration.autogenerate = true
+          Run your tests with autogenerate enabled to generate the cache:
+            FixtureKit.configuration.autogenerate = true
 
-            Or generate caches by running your test suite once with autogenerate enabled.
-          ERROR
-        end
-        replay_from_cache
+          Or generate caches by running your test suite once with autogenerate enabled.
+        ERROR
       end
     end
 
@@ -60,7 +57,7 @@ module FixtureKit
       FixtureSet.new(exposed)
     end
 
-    def replay_from_cache
+    def execute_from_cache
       @cache.load
 
       # Insert cached records using upsert_all (skips duplicates)
@@ -86,7 +83,7 @@ module FixtureKit
           model_name = model.name
           records_by_model[model_name] ||= []
 
-          model.find_each do |record|
+          model.order(:id).find_each do |record|
             # Only use actual database columns, not virtual attributes
             columns = model.column_names & record.attributes.keys
             records_by_model[model_name] << columns.to_h { |col| [col, record.read_attribute_before_type_cast(col)] }

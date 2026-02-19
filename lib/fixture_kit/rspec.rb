@@ -50,4 +50,9 @@ end
 RSpec.configure do |config|
   config.extend FixtureKit::RSpec::ClassMethods
   config.include FixtureKit::RSpec::InstanceMethods
+
+  # Clear caches at suite start when autogenerate is enabled
+  config.before(:suite) do
+    FixtureKit.clear_cache if FixtureKit.configuration.autogenerate
+  end
 end
