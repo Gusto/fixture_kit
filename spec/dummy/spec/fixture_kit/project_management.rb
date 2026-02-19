@@ -2,51 +2,55 @@
 
 FixtureKit.define do
   # Primary database: Team members
-  alice = create(:user, :admin, name: "Alice Chen", email: "alice@example.com")
-  bob = create(:user, :manager, name: "Bob Smith", email: "bob@example.com")
-  charlie = create(:user, name: "Charlie Davis", email: "charlie@example.com")
+  alice = User.create!(name: "Alice Chen", email: "alice@example.com", role: "admin")
+  bob = User.create!(name: "Bob Smith", email: "bob@example.com", role: "manager")
+  charlie = User.create!(name: "Charlie Davis", email: "charlie@example.com")
 
   # Primary database: Projects
-  web_app = create(:project, name: "Web App Redesign", owner: alice, status: "active")
-  mobile_app = create(:project, name: "Mobile App", owner: bob, status: "active")
+  web_app = Project.create!(name: "Web App Redesign", owner: alice, status: "active")
+  mobile_app = Project.create!(name: "Mobile App", owner: bob, status: "active")
 
   # Primary database: Tasks
-  design_task = create(:task,
+  design_task = Task.create!(
     title: "Design new homepage",
     project: web_app,
     assignee: charlie,
     status: "in_progress"
   )
 
-  api_task = create(:task,
+  api_task = Task.create!(
     title: "Build REST API",
     project: web_app,
     assignee: bob,
     status: "pending"
   )
 
-  mobile_tasks = create_list(:task, 3, project: mobile_app, assignee: charlie)
+  mobile_tasks = 3.times.map do |i|
+    Task.create!(title: "Mobile Task #{i + 1}", project: mobile_app, assignee: charlie)
+  end
 
   # Primary database: Comments
-  create(:comment, body: "Looking good so far!", commentable: design_task)
-  create(:comment, body: "Great progress on the project.", commentable: web_app)
+  Comment.create!(body: "Looking good so far!", commentable: design_task)
+  Comment.create!(body: "Great progress on the project.", commentable: web_app)
 
   # Analytics database: Activity logs
-  create(:activity_log, :task_created,
+  ActivityLog.create!(
+    action: "task_created",
     external_user_id: alice.id,
     subject_type: "Task",
     subject_id: design_task.id,
     metadata: { project_name: web_app.name }
   )
 
-  create(:activity_log, :task_created,
+  ActivityLog.create!(
+    action: "task_created",
     external_user_id: bob.id,
     subject_type: "Task",
     subject_id: api_task.id
   )
 
   # Analytics database: Time entries
-  design_time = create(:time_entry,
+  design_time = TimeEntry.create!(
     external_user_id: charlie.id,
     external_task_id: design_task.id,
     hours: 4.5,
@@ -55,14 +59,14 @@ FixtureKit.define do
   )
 
   api_time_entries = [
-    create(:time_entry,
+    TimeEntry.create!(
       external_user_id: bob.id,
       external_task_id: api_task.id,
       hours: 3.0,
       description: "API design",
       logged_at: 1.day.ago
     ),
-    create(:time_entry,
+    TimeEntry.create!(
       external_user_id: bob.id,
       external_task_id: api_task.id,
       hours: 2.5,

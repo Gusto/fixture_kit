@@ -29,8 +29,8 @@ module FixtureKit
       # Run setup hook if configured
       FixtureKit.configuration.setup&.call
 
-      # Execute fixture definition
-      result = fixture.execute
+      # Execute fixture definition - returns exposed records hash
+      exposed = fixture.execute
 
       # Stop capturing and get affected tables
       tables_by_db = capture.stop
@@ -38,20 +38,20 @@ module FixtureKit
       # Generate records from affected tables (grouped by model)
       records_by_model = generate_records(tables_by_db)
 
-      # Build exposed mapping
-      exposed_mapping = build_exposed_mapping(result)
+      # Build exposed mapping for cache
+      exposed_mapping = build_exposed_mapping(exposed)
 
       # Save cache
       @cache.save(records_by_model, exposed_mapping)
 
-      # Build and return FixtureSet from the records we just created
-      build_fixture_set_from_result(result)
+      # Return FixtureSet from the exposed records
+      FixtureSet.new(exposed)
     end
 
     def replay_from_cache
       @cache.load
 
-      # Insert cached records using upsert_all (skips duplicates by "updating" with same values)
+      # Insert cached records using upsert_all (skips duplicates)
       @cache.records.each do |model_name, attributes_array|
         next if attributes_array.empty?
 
@@ -85,48 +85,21 @@ module FixtureKit
       records_by_model
     end
 
-    def build_exposed_mapping(result)
+    def build_exposed_mapping(exposed)
       mapping = {}
 
-      result.exposed.each do |name, fixture_name_or_names|
-        if fixture_name_or_names.is_a?(Array)
-          # Array of fixture names from create_list
-          records = fixture_name_or_names.map do |fixture_name|
-            entry = result.records.find { |e| e.fixture_name.to_s == fixture_name.to_s }
-            next unless entry
-
-            { "model" => entry.record.class.name, "id" => entry.record.id }
-          end.compact
-          mapping[name.to_s] = records
-        else
-          # Single fixture name
-          entry = result.records.find { |e| e.fixture_name.to_s == fixture_name_or_names.to_s }
-          if entry
-            mapping[name.to_s] = { "model" => entry.record.class.name, "id" => entry.record.id }
+      exposed.each do |name, record_or_records|
+        if record_or_records.is_a?(Array)
+          mapping[name.to_s] = record_or_records.map do |record|
+            { "model" => record.class.name, "id" => record.id }
           end
+        else
+          record = record_or_records
+          mapping[name.to_s] = { "model" => record.class.name, "id" => record.id }
         end
       end
 
       mapping
-    end
-
-    def build_fixture_set_from_result(result)
-      exposed_records = {}
-
-      result.exposed.each do |name, fixture_name_or_names|
-        if fixture_name_or_names.is_a?(Array)
-          records = fixture_name_or_names.map do |fixture_name|
-            entry = result.records.find { |e| e.fixture_name.to_s == fixture_name.to_s }
-            entry&.record
-          end.compact
-          exposed_records[name.to_sym] = records
-        else
-          entry = result.records.find { |e| e.fixture_name.to_s == fixture_name_or_names.to_s }
-          exposed_records[name.to_sym] = entry&.record
-        end
-      end
-
-      FixtureSet.new(exposed_records)
     end
 
     def build_fixture_set_from_cache
@@ -149,7 +122,6 @@ module FixtureKit
     end
 
     def model_for_table(table_name, db_name)
-      # Try to find model from registry first
       @model_registry.dig(db_name, table_name) || infer_model(table_name)
     end
 
@@ -160,7 +132,6 @@ module FixtureKit
     end
 
     def default_model_registry
-      # Build a registry of table_name => model_class grouped by database
       registry = Hash.new { |h, k| h[k] = {} }
 
       ActiveRecord::Base.descendants.each do |model|

@@ -7,10 +7,6 @@ ENV["RAILS_ENV"] = "test"
 require_relative "../dummy/config/environment"
 
 require "fixture_kit"
-require "factory_bot"
-
-# Load factories from the dummy app
-Dir[File.join(__dir__, "../dummy/spec/factories/**/*.rb")].each { |f| require f }
 
 # Fixture definitions are loaded on-demand by FixtureKit.load_fixture
 
