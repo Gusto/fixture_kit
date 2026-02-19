@@ -65,6 +65,27 @@ end
 
 The filename determines the fixture name—no need to pass a name to `define`.
 
+You can call `expose` multiple times to organize your setup code:
+
+```ruby
+FixtureKit.define do
+  # Set up users
+  admin = User.create!(name: "Admin", role: "admin")
+  member = User.create!(name: "Member", role: "member")
+  expose(admin: admin, member: member)
+
+  # Set up projects
+  project = Project.create!(name: "Website", owner: admin)
+  expose(project: project)
+
+  # Set up tasks
+  tasks = 3.times.map { |i| Task.create!(title: "Task #{i + 1}", project: project) }
+  expose(tasks: tasks)
+end
+```
+
+Exposing the same name twice raises `FixtureKit::DuplicateNameError`.
+
 ### 2. Use in Tests
 
 ```ruby
