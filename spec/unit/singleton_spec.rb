@@ -62,4 +62,53 @@ RSpec.describe FixtureKit::Singleton do
       expect(FixtureKit::FixtureCache.memory_cache).to be_empty
     end
   end
+
+  describe ".pregenerate_all" do
+    before do
+      FixtureKit.clear_cache
+      FixtureKit.configuration.fixture_path = Rails.root.join("spec/fixture_kit").to_s
+    end
+
+    it "generates caches for all fixtures" do
+      project_cache = File.join(cache_path, "project_management.json")
+      teams_cache = File.join(cache_path, "teams/basic.json")
+
+      expect(File.exist?(project_cache)).to be(false)
+      expect(File.exist?(teams_cache)).to be(false)
+
+      FixtureKit.pregenerate_all
+
+      expect(File.exist?(project_cache)).to be(true)
+      expect(File.exist?(teams_cache)).to be(true)
+    end
+
+    it "does not persist data to database" do
+      # Database should be empty before
+      expect(User.count).to eq(0)
+
+      FixtureKit.pregenerate_all
+
+      # Database should still be empty (transactions rolled back)
+      expect(User.count).to eq(0)
+
+      # But caches should exist
+      project_cache = File.join(cache_path, "project_management.json")
+      expect(File.exist?(project_cache)).to be(true)
+    end
+
+    it "regenerates caches even if they already exist" do
+      # Generate cache
+      FixtureKit.pregenerate_all
+
+      project_cache = File.join(cache_path, "project_management.json")
+      original_mtime = File.mtime(project_cache)
+
+      # Wait and pregenerate again
+      sleep 0.01
+      FixtureKit.pregenerate_all
+
+      # File should have been regenerated (newer mtime)
+      expect(File.mtime(project_cache)).to be > original_mtime
+    end
+  end
 end

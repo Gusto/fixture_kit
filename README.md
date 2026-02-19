@@ -140,7 +140,7 @@ end
 
 When `autogenerate` is `true` (the default), FixtureKit clears all caches at the start of each test run, then regenerates them on first use. Subsequent tests that use the same fixture reuse the cache from earlier in the run. This ensures your test data always matches your fixture definitions.
 
-When `autogenerate` is `false`, FixtureKit expects cache files to already exist. If a cache is missing, it raises `FixtureKit::CacheMissingError`. This is useful in CI where you want to pre-generate caches and fail fast if they're missing.
+When `autogenerate` is `false`, FixtureKit pre-generates all fixture caches at suite start. This happens in rolled-back transactions so no data persists to the database. Any fixtures that already have caches are skipped. This mode is useful for CI where you want consistent, predictable cache generation.
 
 ### Preserving Cache Locally
 
@@ -158,7 +158,9 @@ When `autogenerate` is enabled, FixtureKit stores an MD5 digest of each fixture 
 
 This provides basic cache invalidation without manual intervention. Note that this only detects changes to the fixture definition file itself—changes to factories, models, or schema won't trigger regeneration. For those cases, clear the cache manually or rely on the suite-start clearing when `autogenerate` is enabled.
 
-**CI Setup:**
+### CI Setup
+
+For CI, set `autogenerate` to `false`. FixtureKit will automatically generate any missing caches at suite start:
 
 ```ruby
 FixtureKit.configure do |config|
@@ -166,14 +168,7 @@ FixtureKit.configure do |config|
 end
 ```
 
-Pre-generate caches before running tests on CI:
-
-```bash
-# Generate caches locally by running the full suite with autogenerate enabled
-bundle exec rspec
-```
-
-Commit the cache directory or cache it between CI runs for faster test execution.
+This means CI "just works" - no need to pre-generate caches or commit them to the repository. The first test run will generate all caches, and subsequent runs (if caches are preserved between builds) will reuse them.
 
 ## Nested Fixtures
 

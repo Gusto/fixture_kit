@@ -31,12 +31,10 @@ module FixtureKit
     # Uses cached INSERT statements if available, otherwise executes fixture and caches.
     def load_fixture(name)
       name = name.to_s
-      definition_file = File.join(configuration.fixture_path, "#{name}.rb")
+      definition_file = definition_file_for(name)
 
       # Require the file on-demand if fixture not yet registered
-      unless FixtureRegistry.find(name)
-        require definition_file
-      end
+      require definition_file unless FixtureRegistry.find(name)
 
       runner = FixtureRunner.new(
         name,
@@ -55,6 +53,27 @@ module FixtureKit
 
     def model_registry
       @model_registry
+    end
+
+    # Pre-generate caches for all fixtures.
+    # Used in before(:suite) when autogenerate is false.
+    # Each fixture is generated in a transaction that rolls back, so no data persists.
+    def pregenerate_all
+      # First, load all fixture files to register them
+      FixtureRegistry.load_definitions(configuration.fixture_path)
+
+      # Then iterate over the registry and generate caches
+      FixtureRegistry.all_names.each do |name|
+        definition_file = definition_file_for(name)
+
+        runner = FixtureRunner.new(
+          name,
+          cache_path: configuration.cache_path,
+          definition_file: definition_file,
+          model_registry: @model_registry
+        )
+        runner.generate_cache_only
+      end
     end
 
     # Clear the fixture cache for a specific fixture or all
@@ -76,6 +95,12 @@ module FixtureKit
       @model_registry = nil
       FixtureRegistry.reset
       FixtureCache.clear_memory_cache
+    end
+
+    private
+
+    def definition_file_for(name)
+      File.join(configuration.fixture_path, "#{name}.rb")
     end
   end
 end

@@ -26,6 +26,21 @@ module FixtureKit
       end
     end
 
+    # Generate cache only (used for pregeneration in before(:suite))
+    # Wraps execution in a transaction that rolls back, so no data persists
+    # Always regenerates the cache, even if one exists
+    def generate_cache_only
+      # Clear any existing cache for this fixture
+      FixtureKit.clear_cache(@fixture_name.to_s)
+
+      ActiveRecord::Base.transaction do
+        execute_and_cache
+        raise ActiveRecord::Rollback
+      end
+
+      true
+    end
+
     private
 
     def execute_and_cache
