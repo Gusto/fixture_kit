@@ -113,7 +113,7 @@ RSpec.describe "Multi-database integration" do
     it "creates cache file on first run" do
       FixtureKit.clear_cache("project_management")
 
-      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.yml")
+      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
       expect(File.exist?(cache_file)).to be(false)
 
       # Load fixture (creates cache)
@@ -122,9 +122,11 @@ RSpec.describe "Multi-database integration" do
       expect(File.exist?(cache_file)).to be(true)
 
       # Verify cache content structure
-      cache_data = YAML.unsafe_load_file(cache_file)
+      cache_data = JSON.parse(File.read(cache_file))
       expect(cache_data["records"]).to be_a(Hash)
       expect(cache_data["records"].keys).to include("User")
+      expect(cache_data["records"]["User"]).to be_a(String)
+      expect(cache_data["records"]["User"]).to match(/INSERT OR IGNORE INTO/i)
       expect(cache_data["exposed"]).to be_a(Hash)
     end
 
@@ -137,7 +139,7 @@ RSpec.describe "Multi-database integration" do
 
     it "uses cache when loading in a new transaction (second test uses cache)" do
       # Cache should exist from previous test
-      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.yml")
+      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
       expect(File.exist?(cache_file)).to be(true)
 
       # Load fixture - should use cache (replay INSERTs)
@@ -162,7 +164,7 @@ RSpec.describe "Multi-database integration" do
     it "creates cache in nested directory" do
       FixtureKit.clear_cache("teams/basic")
 
-      cache_file = File.join(FixtureKit.configuration.cache_path, "teams/basic.yml")
+      cache_file = File.join(FixtureKit.configuration.cache_path, "teams/basic.json")
       expect(File.exist?(cache_file)).to be(false)
 
       FixtureKit.load_fixture("teams/basic")
@@ -170,4 +172,103 @@ RSpec.describe "Multi-database integration" do
       expect(File.exist?(cache_file)).to be(true)
     end
   end
+
+  describe "memory caching" do
+    it "caches parsed JSON in memory (first load populates cache)" do
+      # Clear both memory and disk cache
+      FixtureKit.clear_cache("project_management")
+      expect(FixtureKit::FixtureCache.memory_cache.key?("project_management")).to be(false)
+
+      # First load - should populate memory cache
+      FixtureKit.load_fixture("project_management")
+
+      expect(FixtureKit::FixtureCache.memory_cache.key?("project_management")).to be(true)
+      expect(User.count).to eq(3)
+    end
+
+    it "uses memory cache on subsequent loads (second load uses memory)" do
+      # Memory cache should exist from previous test
+      expect(FixtureKit::FixtureCache.memory_cache.key?("project_management")).to be(true)
+
+      # Delete disk cache to prove memory cache is used
+      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
+      FileUtils.rm_f(cache_file)
+      expect(File.exist?(cache_file)).to be(false)
+
+      # Load should still work using memory cache
+      fixture_set = FixtureKit.load_fixture("project_management")
+
+      expect(User.count).to eq(3)
+      expect(fixture_set.alice).to be_a(User)
+    end
+
+    it "clear_cache removes from memory" do
+      # Ensure memory cache has entry
+      FixtureKit::FixtureCache.memory_cache["test_memory"] = { "records" => {} }
+
+      FixtureKit.clear_cache("test_memory")
+
+      expect(FixtureKit::FixtureCache.memory_cache.key?("test_memory")).to be(false)
+    end
+  end
+
+  describe "digest-based cache invalidation" do
+    it "stores digest in cache file" do
+      FixtureKit.clear_cache("project_management")
+
+      FixtureKit.load_fixture("project_management")
+
+      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
+      cache_data = JSON.parse(File.read(cache_file))
+
+      expect(cache_data["digest"]).to be_a(String)
+      expect(cache_data["digest"].length).to eq(32) # MD5 hex string
+    end
+
+    it "regenerates cache when digest changes (simulated by modifying cache)" do
+      # First, generate cache normally
+      FixtureKit.clear_cache("project_management")
+      FixtureKit.load_fixture("project_management")
+
+      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
+      original_data = JSON.parse(File.read(cache_file))
+
+      # Manually modify the cache with a wrong digest
+      modified_data = original_data.merge("digest" => "wrong_digest_value")
+      File.write(cache_file, JSON.generate(modified_data))
+
+      # Clear memory cache so next load reads from disk
+      FixtureKit::FixtureCache.clear_memory_cache("project_management")
+
+      # Load again - should detect digest mismatch and regenerate
+      FixtureKit.load_fixture("project_management")
+
+      # Verify cache was regenerated with correct digest
+      new_cache_data = JSON.parse(File.read(cache_file))
+      expect(new_cache_data["digest"]).to eq(original_data["digest"])
+      expect(new_cache_data["digest"]).not_to eq("wrong_digest_value")
+    end
+
+    it "skips digest check on subsequent loads (uses memory cache)" do
+      # First load - populates memory cache
+      FixtureKit.clear_cache("project_management")
+      FixtureKit.load_fixture("project_management")
+
+      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
+
+      # Modify disk cache with wrong digest (but keep memory cache intact)
+      cache_data = JSON.parse(File.read(cache_file))
+      cache_data["digest"] = "wrong_digest"
+      File.write(cache_file, JSON.generate(cache_data))
+
+      # Second load - should use memory cache, not check digest
+      # If it checked digest, it would regenerate and overwrite our modified file
+      FixtureKit.load_fixture("project_management")
+
+      # Disk file should still have wrong digest (proving memory cache was used)
+      disk_data = JSON.parse(File.read(cache_file))
+      expect(disk_data["digest"]).to eq("wrong_digest")
+    end
+  end
+
 end

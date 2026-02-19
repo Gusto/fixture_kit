@@ -8,7 +8,7 @@ Test data setup is slow. Every `Model.create!` or `FactoryBot.create` hits the d
 
 ## The Solution
 
-FixtureKit caches database records to disk. When `autogenerate` is enabled (the default), caches are regenerated on every test run. When disabled, caches are replayed instantly using `upsert_all`.
+FixtureKit caches database records as raw SQL INSERT statements. On first use, it executes your fixture definition, captures the resulting database state, and generates optimized batch INSERT statements. Subsequent loads replay these statements directly—no ORM overhead, no callbacks, just fast SQL.
 
 Combined with RSpec's transactional fixtures, each test runs in a transaction that rolls back—so cached data can be reused across tests without cleanup.
 
@@ -142,6 +142,22 @@ When `autogenerate` is `true` (the default), FixtureKit clears all caches at the
 
 When `autogenerate` is `false`, FixtureKit expects cache files to already exist. If a cache is missing, it raises `FixtureKit::CacheMissingError`. This is useful in CI where you want to pre-generate caches and fail fast if they're missing.
 
+### Preserving Cache Locally
+
+If you want to skip cache clearing at suite start (e.g., to reuse caches across test runs during local development), set the `FIXTURE_KIT_PRESERVE_CACHE` environment variable:
+
+```bash
+FIXTURE_KIT_PRESERVE_CACHE=1 bundle exec rspec
+```
+
+This is useful when you're iterating on tests and your fixture definitions haven't changed.
+
+### Automatic Cache Invalidation
+
+When `autogenerate` is enabled, FixtureKit stores an MD5 digest of each fixture definition file in the cache. On the first load of a fixture within a test run, FixtureKit compares the stored digest with the current file's digest. If they don't match (i.e., the fixture definition has changed), the cache is automatically regenerated.
+
+This provides basic cache invalidation without manual intervention. Note that this only detects changes to the fixture definition file itself—changes to factories, models, or schema won't trigger regeneration. For those cases, clear the cache manually or rely on the suite-start clearing when `autogenerate` is enabled.
+
 **CI Setup:**
 
 ```ruby
@@ -153,10 +169,7 @@ end
 Pre-generate caches before running tests on CI:
 
 ```bash
-# Generate caches locally or in a CI setup step
-AUTOGENERATE=1 bundle exec rspec --dry-run
-
-# Or run the full suite once with autogenerate enabled
+# Generate caches locally by running the full suite with autogenerate enabled
 bundle exec rspec
 ```
 
@@ -179,15 +192,40 @@ fixture "teams/sales"
 
 ## How It Works
 
-1. **With autogenerate enabled** (default): FixtureKit executes your definition block, subscribes to `sql.active_record` notifications to track which tables received INSERTs, queries all records from those tables, and caches them to a YAML file.
+1. **First load (cache miss)**: FixtureKit executes your definition block, subscribes to `sql.active_record` notifications to track which tables received INSERTs, queries all records from those tables, and generates batch INSERT statements with conflict handling (`INSERT OR IGNORE` for SQLite, `ON CONFLICT DO NOTHING` for PostgreSQL, `INSERT IGNORE` for MySQL).
 
-2. **With autogenerate disabled**: FixtureKit loads the cache and replays records using `upsert_all` with `on_duplicate: :skip`. This is much faster than re-running your setup code.
+2. **Subsequent loads (cache hit)**: FixtureKit loads the cached JSON file and executes the raw SQL INSERT statements directly. No ORM instantiation, no callbacks—just fast SQL execution.
 
-3. **Transaction isolation**: RSpec's `use_transactional_fixtures` wraps each test in a transaction that rolls back, so data doesn't persist between tests.
+3. **In-memory caching**: Once a cache file is parsed, the data is stored in memory. Multiple tests using the same fixture within a single test run don't re-read or re-parse the JSON file.
+
+4. **Transaction isolation**: RSpec's `use_transactional_fixtures` wraps each test in a transaction that rolls back, so data doesn't persist between tests.
+
+### Cache Format
+
+Caches are stored as JSON files in `tmp/cache/fixture_kit/`:
+
+```json
+{
+  "digest": "a1b2c3d4e5f6...",
+  "records": {
+    "User": "INSERT OR IGNORE INTO users (id, name, email) VALUES (1, 'Alice', 'alice@example.com'), (2, 'Bob', 'bob@example.com')",
+    "Project": "INSERT OR IGNORE INTO projects (id, name, user_id) VALUES (1, 'Website', 1)"
+  },
+  "exposed": {
+    "alice": { "model": "User", "id": 1 },
+    "bob": { "model": "User", "id": 2 },
+    "project": { "model": "Project", "id": 1 }
+  }
+}
+```
+
+- **digest**: MD5 hash of the fixture definition file, used for automatic cache invalidation
+- **records**: Maps model names to their INSERT statements. Using model names (not table names) allows FixtureKit to use the correct database connection for multi-database setups.
+- **exposed**: Maps fixture accessor names to their model class and ID for querying after cache replay
 
 ## Cache Management
 
-Clear all caches:
+Clear all caches (both disk and in-memory):
 ```ruby
 FixtureKit.clear_cache
 ```
@@ -197,14 +235,16 @@ Clear a specific fixture's cache:
 FixtureKit.clear_cache("bookstore")
 ```
 
-Or delete the cache directory:
+Or delete the cache directory manually:
 ```bash
 rm -rf tmp/cache/fixture_kit
 ```
 
+Note: Deleting files manually only clears the disk cache. The in-memory cache persists until `FixtureKit.clear_cache` is called or the test process ends.
+
 ## Multi-Database Support
 
-FixtureKit automatically handles multiple databases. Records are grouped by their database connection and replayed to the correct database.
+FixtureKit automatically handles multiple databases. Records are stored by model name in the cache, and when replaying, FixtureKit uses each model's database connection to execute the INSERT statements. This means records are automatically inserted into the correct database without any additional configuration.
 
 ## Requirements
 

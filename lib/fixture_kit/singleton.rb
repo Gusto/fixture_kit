@@ -31,16 +31,17 @@ module FixtureKit
     # Uses cached INSERT statements if available, otherwise executes fixture and caches.
     def load_fixture(name)
       name = name.to_s
+      definition_file = File.join(configuration.fixture_path, "#{name}.rb")
 
       # Require the file on-demand if fixture not yet registered
       unless FixtureRegistry.find(name)
-        fixture_file = File.join(configuration.fixture_path, "#{name}.rb")
-        require fixture_file
+        require definition_file
       end
 
       runner = FixtureRunner.new(
         name,
         cache_path: configuration.cache_path,
+        definition_file: definition_file,
         model_registry: @model_registry
       )
       runner.run
@@ -58,8 +59,12 @@ module FixtureKit
 
     # Clear the fixture cache for a specific fixture or all
     def clear_cache(fixture_name = nil)
+      # Clear in-memory cache
+      FixtureCache.clear_memory_cache(fixture_name)
+
+      # Clear disk cache
       if fixture_name
-        cache_file = File.join(configuration.cache_path, "#{fixture_name}.yml")
+        cache_file = File.join(configuration.cache_path, "#{fixture_name}.json")
         FileUtils.rm_f(cache_file)
       else
         FileUtils.rm_rf(configuration.cache_path)
@@ -70,6 +75,7 @@ module FixtureKit
       @configuration = nil
       @model_registry = nil
       FixtureRegistry.reset
+      FixtureCache.clear_memory_cache
     end
   end
 end

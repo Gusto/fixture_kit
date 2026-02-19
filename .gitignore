@@ -1,14 +1,21 @@
+# Bundler
 /.bundle/
+/vendor/bundle/
+Gemfile.lock
+
+# Build artifacts
+/pkg/
+*.gem
+
+# Documentation
 /.yardoc
 /_yardoc/
 /coverage/
 /doc/
-/pkg/
-/spec/reports/
-/tmp/
-*.gem
-Gemfile.lock
 
 # Test artifacts
+/tmp/
+/spec/reports/
 /spec/fixtures/fixtury_bot/
 /spec/examples.txt
+/log/

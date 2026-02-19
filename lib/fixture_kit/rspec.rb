@@ -52,7 +52,9 @@ RSpec.configure do |config|
   config.include FixtureKit::RSpec::InstanceMethods
 
   # Clear caches at suite start when autogenerate is enabled
+  # Set FIXTURE_KIT_PRESERVE_CACHE=1 to skip cache clearing (useful for local development)
   config.before(:suite) do
-    FixtureKit.clear_cache if FixtureKit.configuration.autogenerate
+    preserve_cache = ENV["FIXTURE_KIT_PRESERVE_CACHE"].to_s.match?(/\A(1|true|yes)\z/i)
+    FixtureKit.clear_cache if FixtureKit.configuration.autogenerate && !preserve_cache
   end
 end
