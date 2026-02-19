@@ -4,10 +4,17 @@ require "spec_helper"
 
 RSpec.describe FixtureKit::FixtureCache do
   let(:cache_path) { Rails.root.join("tmp/cache/fixture_kit_test").to_s }
+  let(:fixture_path) { Rails.root.join("spec/fixture_kit").to_s }
   let(:fixture_name) { "test_fixture" }
-  let(:cache) { described_class.new(fixture_name, cache_path) }
+  let(:cache) { described_class.new(fixture_name) }
 
   before do
+    # Configure FixtureKit to use test paths
+    FixtureKit.configure do |config|
+      config.cache_path = cache_path
+      config.fixture_path = fixture_path
+    end
+
     # Clear both disk and memory cache before each test
     FileUtils.rm_rf(cache_path)
     described_class.clear_memory_cache
@@ -24,7 +31,7 @@ RSpec.describe FixtureKit::FixtureCache do
     end
 
     it "handles nested fixture names" do
-      nested_cache = described_class.new("teams/basic", cache_path)
+      nested_cache = described_class.new("teams/basic")
       expect(nested_cache.cache_file_path).to eq(File.join(cache_path, "teams/basic.json"))
     end
   end
@@ -120,11 +127,11 @@ RSpec.describe FixtureKit::FixtureCache do
       File.write(cache.cache_file_path, JSON.generate(test_data))
 
       # First load - reads from disk
-      cache1 = described_class.new(fixture_name, cache_path)
+      cache1 = described_class.new(fixture_name)
       cache1.load
 
       # Second load - should use memory cache
-      cache2 = described_class.new(fixture_name, cache_path)
+      cache2 = described_class.new(fixture_name)
 
       # Delete the disk file to prove memory cache is used
       File.delete(cache.cache_file_path)
@@ -135,50 +142,42 @@ RSpec.describe FixtureKit::FixtureCache do
   end
 
   describe "#save" do
-    let(:records) { { "User" => "INSERT INTO users VALUES (1, 'Alice')" } }
     let(:exposed) { { "alice" => { "model" => "User", "id" => 1 } } }
 
+    # Use empty models_with_connections for basic save tests
+    # Full integration is tested in integration specs
+    let(:models_with_connections) { {} }
+
     it "writes data to disk" do
-      cache.save(records, exposed)
+      cache.save(models_with_connections: models_with_connections, exposed_mapping: exposed)
 
       expect(File.exist?(cache.cache_file_path)).to be(true)
 
       saved_data = JSON.parse(File.read(cache.cache_file_path))
-      expect(saved_data["records"]).to eq(records)
+      expect(saved_data["records"]).to eq({})
       expect(saved_data["exposed"]).to eq(exposed)
     end
 
     it "stores data in memory cache" do
-      cache.save(records, exposed)
+      cache.save(models_with_connections: models_with_connections, exposed_mapping: exposed)
 
       expect(described_class.memory_cache[fixture_name]).to eq({
-        "digest" => nil,
-        "records" => records,
+        "records" => {},
         "exposed" => exposed
       })
     end
 
-    it "stores digest when provided" do
-      cache.save(records, exposed, digest: "abc123")
-
-      expect(cache.digest).to eq("abc123")
-      expect(described_class.memory_cache[fixture_name]["digest"]).to eq("abc123")
-
-      saved_data = JSON.parse(File.read(cache.cache_file_path))
-      expect(saved_data["digest"]).to eq("abc123")
-    end
-
     it "creates nested directories for nested fixture names" do
-      nested_cache = described_class.new("teams/engineering/backend", cache_path)
-      nested_cache.save(records, exposed)
+      nested_cache = described_class.new("teams/engineering/backend")
+      nested_cache.save(models_with_connections: models_with_connections, exposed_mapping: exposed)
 
       expect(File.exist?(nested_cache.cache_file_path)).to be(true)
     end
 
     it "sets instance attributes" do
-      cache.save(records, exposed)
+      cache.save(models_with_connections: models_with_connections, exposed_mapping: exposed)
 
-      expect(cache.records).to eq(records)
+      expect(cache.records).to eq({})
       expect(cache.exposed).to eq(exposed)
     end
   end
@@ -209,95 +208,89 @@ RSpec.describe FixtureKit::FixtureCache do
     end
   end
 
-  describe ".in_memory?" do
-    it "returns true when fixture is in memory cache" do
-      described_class.memory_cache["my_fixture"] = { "records" => {} }
-
-      expect(described_class.in_memory?("my_fixture")).to be(true)
-    end
-
-    it "returns false when fixture is not in memory cache" do
-      expect(described_class.in_memory?("nonexistent")).to be(false)
-    end
-
-    it "handles symbol fixture names" do
-      described_class.memory_cache["my_fixture"] = { "records" => {} }
-
-      expect(described_class.in_memory?(:my_fixture)).to be(true)
-    end
-  end
-
-  describe ".compute_digest" do
-    let(:test_file) { File.join(cache_path, "test_file.rb") }
-
+  describe ".clear" do
     before do
+      # Set up memory cache
+      described_class.memory_cache["fixture_a"] = { "records" => {} }
+      described_class.memory_cache["fixture_b"] = { "records" => {} }
+
+      # Set up disk cache
       FileUtils.mkdir_p(cache_path)
+      File.write(File.join(cache_path, "fixture_a.json"), "{}")
+      File.write(File.join(cache_path, "fixture_b.json"), "{}")
     end
 
-    it "returns MD5 digest of file contents" do
-      File.write(test_file, "hello world")
+    it "clears a specific fixture from both memory and disk" do
+      described_class.clear("fixture_a")
 
-      digest = described_class.compute_digest(test_file)
+      # Memory cache
+      expect(described_class.memory_cache.key?("fixture_a")).to be(false)
+      expect(described_class.memory_cache.key?("fixture_b")).to be(true)
 
-      expect(digest).to eq(Digest::MD5.hexdigest("hello world"))
+      # Disk cache
+      expect(File.exist?(File.join(cache_path, "fixture_a.json"))).to be(false)
+      expect(File.exist?(File.join(cache_path, "fixture_b.json"))).to be(true)
     end
 
-    it "returns different digest for different contents" do
-      File.write(test_file, "content1")
-      digest1 = described_class.compute_digest(test_file)
+    it "clears all fixtures from both memory and disk when no fixture_name given" do
+      described_class.clear
 
-      File.write(test_file, "content2")
-      digest2 = described_class.compute_digest(test_file)
+      # Memory cache
+      expect(described_class.memory_cache).to be_empty
 
-      expect(digest1).not_to eq(digest2)
-    end
-
-    it "returns nil for nil path" do
-      expect(described_class.compute_digest(nil)).to be_nil
-    end
-
-    it "returns nil for nonexistent file" do
-      expect(described_class.compute_digest("/nonexistent/path.rb")).to be_nil
+      # Disk cache
+      expect(Dir.exist?(cache_path)).to be(false)
     end
   end
 
-  describe "#digest" do
-    let(:test_data_with_digest) do
-      {
-        "digest" => "abc123def456",
-        "records" => { "User" => "INSERT INTO users VALUES (1, 'Alice')" },
-        "exposed" => { "alice" => { "model" => "User", "id" => 1 } }
-      }
+  describe ".pregenerate_all" do
+    before do
+      described_class.clear
     end
 
-    it "loads digest from disk cache" do
-      FileUtils.mkdir_p(cache_path)
-      File.write(cache.cache_file_path, JSON.generate(test_data_with_digest))
+    it "generates caches for all fixtures" do
+      project_cache = File.join(cache_path, "project_management.json")
+      teams_cache = File.join(cache_path, "teams/basic.json")
 
-      cache.load
+      expect(File.exist?(project_cache)).to be(false)
+      expect(File.exist?(teams_cache)).to be(false)
 
-      expect(cache.digest).to eq("abc123def456")
+      described_class.pregenerate_all
+
+      expect(File.exist?(project_cache)).to be(true)
+      expect(File.exist?(teams_cache)).to be(true)
     end
 
-    it "loads digest from memory cache" do
-      described_class.memory_cache[fixture_name] = test_data_with_digest
+    it "does not persist data to database" do
+      # Database should be empty before
+      expect(User.count).to eq(0)
 
-      cache.load
+      described_class.pregenerate_all
 
-      expect(cache.digest).to eq("abc123def456")
+      # Database should still be empty (transactions rolled back)
+      expect(User.count).to eq(0)
+
+      # But caches should exist
+      project_cache = File.join(cache_path, "project_management.json")
+      expect(File.exist?(project_cache)).to be(true)
     end
 
-    it "handles missing digest in cache (nil)" do
-      data_without_digest = {
-        "records" => { "User" => "INSERT" },
-        "exposed" => {}
-      }
-      FileUtils.mkdir_p(cache_path)
-      File.write(cache.cache_file_path, JSON.generate(data_without_digest))
+    it "regenerates caches even if they already exist" do
+      # Generate cache
+      described_class.pregenerate_all
 
-      cache.load
+      project_cache = File.join(cache_path, "project_management.json")
 
-      expect(cache.digest).to be_nil
+      # Corrupt the cache file with invalid content
+      File.write(project_cache, '{"records": {}, "exposed": {}}')
+
+      # Pregenerate again - should overwrite with valid content
+      described_class.pregenerate_all
+
+      # Cache should have actual records now
+      cache_data = JSON.parse(File.read(project_cache))
+      expect(cache_data["records"]).to have_key("User")
+      expect(cache_data["exposed"]).to have_key("alice")
     end
   end
 end

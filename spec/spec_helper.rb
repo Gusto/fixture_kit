@@ -41,6 +41,6 @@ RSpec.configure do |config|
 
   # Clean up cache after suite
   config.after(:suite) do
-    FixtureKit.clear_cache
+    clear_fixture_cache
   end
 end

@@ -8,7 +8,15 @@ require_relative "../dummy/config/environment"
 
 require "fixture_kit"
 
-# Fixture definitions are loaded on-demand by FixtureKit.load_fixture
+# Helper to load fixtures in tests (wraps internal API)
+def load_fixture(name)
+  FixtureKit::FixtureRegistry.load_fixture(name)
+end
+
+# Helper to clear fixture cache in tests
+def clear_fixture_cache(fixture_name = nil)
+  FixtureKit::FixtureCache.clear(fixture_name)
+end
 
 # Create schema for both databases
 def setup_databases

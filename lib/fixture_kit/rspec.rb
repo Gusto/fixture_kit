@@ -39,7 +39,7 @@ module FixtureKit
           fixture_name = self.class.metadata[:fixture_name]
           raise "No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block." unless fixture_name
 
-          FixtureKit.load_fixture(fixture_name)
+          FixtureKit::FixtureRegistry.load_fixture(fixture_name)
         end
       end
     end
@@ -53,13 +53,13 @@ RSpec.configure do |config|
 
   # Setup caches at suite start based on autogenerate setting
   # - autogenerate=true: Clear all caches (unless FIXTURE_KIT_PRESERVE_CACHE is set)
-  # - autogenerate=false: Pre-generate any missing caches so tests don't fail
+  # - autogenerate=false: Pre-generate all caches so tests don't fail
   config.before(:suite) do
     if FixtureKit.configuration.autogenerate
       preserve_cache = ENV["FIXTURE_KIT_PRESERVE_CACHE"].to_s.match?(/\A(1|true|yes)\z/i)
-      FixtureKit.clear_cache unless preserve_cache
+      FixtureKit::FixtureCache.clear unless preserve_cache
     else
-      FixtureKit.pregenerate_all
+      FixtureKit::FixtureCache.pregenerate_all
     end
   end
 end

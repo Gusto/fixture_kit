@@ -111,13 +111,13 @@ RSpec.describe "Multi-database integration" do
 
   describe "caching" do
     it "creates cache file on first run" do
-      FixtureKit.clear_cache("project_management")
+      clear_fixture_cache("project_management")
 
       cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
       expect(File.exist?(cache_file)).to be(false)
 
       # Load fixture (creates cache)
-      FixtureKit.load_fixture("project_management")
+      load_fixture("project_management")
 
       expect(File.exist?(cache_file)).to be(true)
 
@@ -133,7 +133,7 @@ RSpec.describe "Multi-database integration" do
     it "uses cache when loading in a new transaction (first test creates cache)" do
       # This test and the next test together verify caching works across tests
       # This test creates the cache
-      FixtureKit.load_fixture("project_management")
+      load_fixture("project_management")
       expect(User.count).to eq(3)
     end
 
@@ -143,7 +143,7 @@ RSpec.describe "Multi-database integration" do
       expect(File.exist?(cache_file)).to be(true)
 
       # Load fixture - should use cache (replay INSERTs)
-      fixture_set = FixtureKit.load_fixture("project_management")
+      fixture_set = load_fixture("project_management")
 
       # Verify records were loaded from cache
       expect(User.count).to eq(3)
@@ -162,12 +162,12 @@ RSpec.describe "Multi-database integration" do
     end
 
     it "creates cache in nested directory" do
-      FixtureKit.clear_cache("teams/basic")
+      clear_fixture_cache("teams/basic")
 
       cache_file = File.join(FixtureKit.configuration.cache_path, "teams/basic.json")
       expect(File.exist?(cache_file)).to be(false)
 
-      FixtureKit.load_fixture("teams/basic")
+      load_fixture("teams/basic")
 
       expect(File.exist?(cache_file)).to be(true)
     end
@@ -176,11 +176,11 @@ RSpec.describe "Multi-database integration" do
   describe "memory caching" do
     it "caches parsed JSON in memory (first load populates cache)" do
       # Clear both memory and disk cache
-      FixtureKit.clear_cache("project_management")
+      clear_fixture_cache("project_management")
       expect(FixtureKit::FixtureCache.memory_cache.key?("project_management")).to be(false)
 
       # First load - should populate memory cache
-      FixtureKit.load_fixture("project_management")
+      load_fixture("project_management")
 
       expect(FixtureKit::FixtureCache.memory_cache.key?("project_management")).to be(true)
       expect(User.count).to eq(3)
@@ -196,7 +196,7 @@ RSpec.describe "Multi-database integration" do
       expect(File.exist?(cache_file)).to be(false)
 
       # Load should still work using memory cache
-      fixture_set = FixtureKit.load_fixture("project_management")
+      fixture_set = load_fixture("project_management")
 
       expect(User.count).to eq(3)
       expect(fixture_set.alice).to be_a(User)
@@ -206,68 +206,9 @@ RSpec.describe "Multi-database integration" do
       # Ensure memory cache has entry
       FixtureKit::FixtureCache.memory_cache["test_memory"] = { "records" => {} }
 
-      FixtureKit.clear_cache("test_memory")
+      clear_fixture_cache("test_memory")
 
       expect(FixtureKit::FixtureCache.memory_cache.key?("test_memory")).to be(false)
-    end
-  end
-
-  describe "digest-based cache invalidation" do
-    it "stores digest in cache file" do
-      FixtureKit.clear_cache("project_management")
-
-      FixtureKit.load_fixture("project_management")
-
-      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
-      cache_data = JSON.parse(File.read(cache_file))
-
-      expect(cache_data["digest"]).to be_a(String)
-      expect(cache_data["digest"].length).to eq(32) # MD5 hex string
-    end
-
-    it "regenerates cache when digest changes (simulated by modifying cache)" do
-      # First, generate cache normally
-      FixtureKit.clear_cache("project_management")
-      FixtureKit.load_fixture("project_management")
-
-      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
-      original_data = JSON.parse(File.read(cache_file))
-
-      # Manually modify the cache with a wrong digest
-      modified_data = original_data.merge("digest" => "wrong_digest_value")
-      File.write(cache_file, JSON.generate(modified_data))
-
-      # Clear memory cache so next load reads from disk
-      FixtureKit::FixtureCache.clear_memory_cache("project_management")
-
-      # Load again - should detect digest mismatch and regenerate
-      FixtureKit.load_fixture("project_management")
-
-      # Verify cache was regenerated with correct digest
-      new_cache_data = JSON.parse(File.read(cache_file))
-      expect(new_cache_data["digest"]).to eq(original_data["digest"])
-      expect(new_cache_data["digest"]).not_to eq("wrong_digest_value")
-    end
-
-    it "skips digest check on subsequent loads (uses memory cache)" do
-      # First load - populates memory cache
-      FixtureKit.clear_cache("project_management")
-      FixtureKit.load_fixture("project_management")
-
-      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
-
-      # Modify disk cache with wrong digest (but keep memory cache intact)
-      cache_data = JSON.parse(File.read(cache_file))
-      cache_data["digest"] = "wrong_digest"
-      File.write(cache_file, JSON.generate(cache_data))
-
-      # Second load - should use memory cache, not check digest
-      # If it checked digest, it would regenerate and overwrite our modified file
-      FixtureKit.load_fixture("project_management")
-
-      # Disk file should still have wrong digest (proving memory cache was used)
-      disk_data = JSON.parse(File.read(cache_file))
-      expect(disk_data["digest"]).to eq("wrong_digest")
     end
   end
 

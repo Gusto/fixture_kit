@@ -28,6 +28,22 @@ module FixtureKit
         @fixtures = nil
       end
 
+      # Load a fixture's records into the database and return a FixtureSet.
+      # Uses cached INSERT statements if available, otherwise executes fixture and caches.
+      def load_fixture(name)
+        name = name.to_s
+
+        # Load the file on-demand if fixture not yet registered
+        unless find(name)
+          fixture_path = FixtureKit.configuration.fixture_path
+          file_path = File.expand_path(File.join(fixture_path, "#{name}.rb"))
+          load file_path
+        end
+
+        runner = FixtureRunner.new(name)
+        runner.run
+      end
+
       private
 
       def fixtures

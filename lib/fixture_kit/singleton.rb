@@ -27,80 +27,10 @@ module FixtureKit
       fixture
     end
 
-    # Load a fixture's records into the database and return a FixtureSet.
-    # Uses cached INSERT statements if available, otherwise executes fixture and caches.
-    def load_fixture(name)
-      name = name.to_s
-      definition_file = definition_file_for(name)
-
-      # Require the file on-demand if fixture not yet registered
-      require definition_file unless FixtureRegistry.find(name)
-
-      runner = FixtureRunner.new(
-        name,
-        cache_path: configuration.cache_path,
-        definition_file: definition_file,
-        model_registry: @model_registry
-      )
-      runner.run
-    end
-
-    # Set a model registry for table -> model class mapping
-    # Useful when models can't be inferred from table names
-    def model_registry=(registry)
-      @model_registry = registry
-    end
-
-    def model_registry
-      @model_registry
-    end
-
-    # Pre-generate caches for all fixtures.
-    # Used in before(:suite) when autogenerate is false.
-    # Each fixture is generated in a transaction that rolls back, so no data persists.
-    def pregenerate_all
-      # First, load all fixture files to register them
-      FixtureRegistry.load_definitions(configuration.fixture_path)
-
-      # Then iterate over the registry and generate caches
-      FixtureRegistry.all_names.each do |name|
-        definition_file = definition_file_for(name)
-
-        runner = FixtureRunner.new(
-          name,
-          cache_path: configuration.cache_path,
-          definition_file: definition_file,
-          model_registry: @model_registry
-        )
-        runner.generate_cache_only
-      end
-    end
-
-    # Clear the fixture cache for a specific fixture or all
-    def clear_cache(fixture_name = nil)
-      # Clear in-memory cache
-      FixtureCache.clear_memory_cache(fixture_name)
-
-      # Clear disk cache
-      if fixture_name
-        cache_file = File.join(configuration.cache_path, "#{fixture_name}.json")
-        FileUtils.rm_f(cache_file)
-      else
-        FileUtils.rm_rf(configuration.cache_path)
-      end
-    end
-
     def reset
       @configuration = nil
-      @model_registry = nil
       FixtureRegistry.reset
       FixtureCache.clear_memory_cache
-    end
-
-    private
-
-    def definition_file_for(name)
-      File.join(configuration.fixture_path, "#{name}.rb")
     end
   end
 end

@@ -9,26 +9,7 @@ module FixtureKit
     def initialize
       @fixture_path = nil
       @cache_path = nil
-      @setup = nil
       @autogenerate = true
-    end
-
-    # Set a block to run before each fixture is executed.
-    # Useful for setting a fixed seed for Faker/FFaker.
-    #
-    # Example:
-    #   FixtureKit.configure do |config|
-    #     config.setup do
-    #       FFaker::Random.seed = 12345
-    #       Faker::Config.random = Random.new(12345)
-    #     end
-    #   end
-    def setup(&block)
-      if block_given?
-        @setup = block
-      else
-        @setup
-      end
     end
 
     def fixture_path
@@ -42,7 +23,11 @@ module FixtureKit
     private
 
     def detect_fixture_path
-      if Dir.exist?("spec")
+      if defined?(RSpec)
+        "spec/fixture_kit"
+      elsif defined?(Minitest)
+        "test/fixture_kit"
+      elsif Dir.exist?("spec")
         "spec/fixture_kit"
       elsif Dir.exist?("test")
         "test/fixture_kit"

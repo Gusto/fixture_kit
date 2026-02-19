@@ -128,11 +128,6 @@ FixtureKit.configure do |config|
 
   # Whether to regenerate caches on every run (default: true)
   config.autogenerate = true
-
-  # Run before each fixture executes (e.g., seed random data)
-  config.setup do
-    Faker::Config.random = Random.new(12345)
-  end
 end
 ```
 
@@ -151,12 +146,6 @@ FIXTURE_KIT_PRESERVE_CACHE=1 bundle exec rspec
 ```
 
 This is useful when you're iterating on tests and your fixture definitions haven't changed.
-
-### Automatic Cache Invalidation
-
-When `autogenerate` is enabled, FixtureKit stores an MD5 digest of each fixture definition file in the cache. On the first load of a fixture within a test run, FixtureKit compares the stored digest with the current file's digest. If they don't match (i.e., the fixture definition has changed), the cache is automatically regenerated.
-
-This provides basic cache invalidation without manual intervention. Note that this only detects changes to the fixture definition file itself—changes to factories, models, or schema won't trigger regeneration. For those cases, clear the cache manually or rely on the suite-start clearing when `autogenerate` is enabled.
 
 ### CI Setup
 
@@ -201,7 +190,6 @@ Caches are stored as JSON files in `tmp/cache/fixture_kit/`:
 
 ```json
 {
-  "digest": "a1b2c3d4e5f6...",
   "records": {
     "User": "INSERT OR IGNORE INTO users (id, name, email) VALUES (1, 'Alice', 'alice@example.com'), (2, 'Bob', 'bob@example.com')",
     "Project": "INSERT OR IGNORE INTO projects (id, name, user_id) VALUES (1, 'Website', 1)"
@@ -214,28 +202,17 @@ Caches are stored as JSON files in `tmp/cache/fixture_kit/`:
 }
 ```
 
-- **digest**: MD5 hash of the fixture definition file, used for automatic cache invalidation
 - **records**: Maps model names to their INSERT statements. Using model names (not table names) allows FixtureKit to use the correct database connection for multi-database setups.
 - **exposed**: Maps fixture accessor names to their model class and ID for querying after cache replay
 
 ## Cache Management
 
-Clear all caches (both disk and in-memory):
-```ruby
-FixtureKit.clear_cache
-```
-
-Clear a specific fixture's cache:
-```ruby
-FixtureKit.clear_cache("bookstore")
-```
-
-Or delete the cache directory manually:
+Delete the cache directory to force regeneration:
 ```bash
 rm -rf tmp/cache/fixture_kit
 ```
 
-Note: Deleting files manually only clears the disk cache. The in-memory cache persists until `FixtureKit.clear_cache` is called or the test process ends.
+Caches are automatically cleared at suite start when `autogenerate` is enabled, so manual clearing is rarely needed.
 
 ## Multi-Database Support
 
