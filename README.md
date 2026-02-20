@@ -104,6 +104,9 @@ RSpec.describe Book do
 end
 ```
 
+`fixture` returns a `FixtureSet` and exposes records as methods (for example, `fixture.owner`).
+Hash-style access like `fixture[:owner]` is not supported.
+
 ### 3. Configure RSpec
 
 ```ruby
@@ -134,6 +137,9 @@ FixtureKit.configure do |config|
   # config.generator = FixtureKit::TestCase::Generator
 end
 ```
+
+Custom generators should subclass `FixtureKit::Generator` and implement `#run`.
+`#run` receives the pregeneration block and should execute it in whatever lifecycle you need.
 
 ### Autogenerate
 
