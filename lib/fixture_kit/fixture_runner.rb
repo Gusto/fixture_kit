@@ -27,15 +27,15 @@ module FixtureKit
     end
 
     # Generate cache only (used for pregeneration in before(:suite))
-    # Wraps execution in a transaction that rolls back, so no data persists
+    # Wraps execution in ActiveRecord::TestFixtures transactional lifecycle,
+    # so no data persists across configured writing pools.
     # Always regenerates the cache, even if one exists
     def generate_cache_only
       # Clear any existing cache for this fixture
       FixtureCache.clear(@fixture_name.to_s)
 
-      ActiveRecord::Base.transaction do
+      FixtureKit::TransactionalHarness.run do
         execute_and_cache
-        raise ActiveRecord::Rollback
       end
 
       true

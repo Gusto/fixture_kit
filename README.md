@@ -98,8 +98,8 @@ RSpec.describe Book do
     expect(fixture.books.size).to eq(3)
   end
 
-  it "supports hash-style access" do
-    expect(fixture[:owner]).to eq(fixture.owner)
+  it "exposes records as methods" do
+    expect(fixture.owner.email).to eq("alice@example.com")
   end
 end
 ```
