@@ -7,6 +7,14 @@ RSpec.describe "RSpec integration" do
     it "sets RSpec generator by default" do
       expect(FixtureKit.configuration.generator).to eq(FixtureKit::RSpec::Generator)
     end
+
+    it "keeps RSpec generator when configure does not override it" do
+      FixtureKit.configure do |config|
+        config.fixture_path = "spec/fixture_kit"
+      end
+
+      expect(FixtureKit.configuration.generator).to eq(FixtureKit::RSpec::Generator)
+    end
   end
 
   describe "FIXTURE_KIT_PRESERVE_CACHE environment variable" do

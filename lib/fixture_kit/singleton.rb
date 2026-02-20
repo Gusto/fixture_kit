@@ -5,8 +5,7 @@ require "pathname"
 module FixtureKit
   module Singleton
     def configure
-      @configuration = Configuration.new
-      yield(@configuration) if block_given?
+      yield(configuration) if block_given?
       self
     end
 
