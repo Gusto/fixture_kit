@@ -1,23 +1,12 @@
 # frozen_string_literal: true
 
 require "fixture_kit"
+require_relative "rspec/declaration"
 
 module FixtureKit
   module RSpec
     DECLARATION_METADATA_KEY = :fixture_kit_declaration
     PRESERVE_CACHE_ENV_KEY = "FIXTURE_KIT_PRESERVE_CACHE"
-
-    class Declaration
-      attr_reader :name
-
-      def initialize(name)
-        @name = name.to_s
-      end
-
-      def fixture_set
-        FixtureKit::FixtureRegistry.load_fixture(name)
-      end
-    end
 
     # Class methods (extended via config.extend)
     module ClassMethods
