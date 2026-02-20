@@ -13,6 +13,10 @@ module FixtureKit
       def initialize(name)
         @name = name.to_s
       end
+
+      def fixture_set
+        FixtureKit::FixtureRegistry.load_fixture(name)
+      end
     end
 
     # Class methods (extended via config.extend)
@@ -61,7 +65,7 @@ RSpec.configure do |config|
   # Runs inside transactional fixtures and before user-defined before hooks.
   config.prepend_before(:example, FixtureKit::RSpec::DECLARATION_METADATA_KEY) do |example|
     declaration = example.metadata[FixtureKit::RSpec::DECLARATION_METADATA_KEY]
-    @_fixture_kit_fixture_set = FixtureKit::FixtureRegistry.load_fixture(declaration.name)
+    @_fixture_kit_fixture_set = declaration.fixture_set
   end
 
   # Setup caches at suite start based on autogenerate setting
