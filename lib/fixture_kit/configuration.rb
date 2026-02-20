@@ -4,11 +4,13 @@ module FixtureKit
   class Configuration
     attr_writer :fixture_path
     attr_writer :cache_path
+    attr_accessor :generator
     attr_accessor :autogenerate
 
     def initialize
       @fixture_path = nil
       @cache_path = nil
+      @generator = FixtureKit::Generator
       @autogenerate = true
     end
 

@@ -128,6 +128,10 @@ FixtureKit.configure do |config|
 
   # Whether to regenerate caches on every run (default: true)
   config.autogenerate = true
+
+  # Optional: customize how pregeneration is wrapped.
+  # Default is FixtureKit::Generator.
+  # config.generator = FixtureKit::Generator
 end
 ```
 
@@ -135,7 +139,9 @@ end
 
 When `autogenerate` is `true` (the default), FixtureKit clears all caches at the start of each test run, then regenerates them on first use. Subsequent tests that use the same fixture reuse the cache from earlier in the run. This ensures your test data always matches your fixture definitions.
 
-When `autogenerate` is `false`, FixtureKit pre-generates all fixture caches at suite start. This happens in rolled-back transactions so no data persists to the database. Any fixtures that already have caches are skipped. This mode is useful for CI where you want consistent, predictable cache generation.
+When `autogenerate` is `false`, FixtureKit pre-generates all fixture caches at suite start. This runs through the configured `generator`, and still rolls back database changes.
+
+When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpec::Generator` as the generator. This runs pregeneration inside an internal RSpec example so your normal `before`/`around`/`after` hooks apply. The internal example uses a null reporter, so it does not count toward suite example totals.
 
 ### Preserving Cache Locally
 

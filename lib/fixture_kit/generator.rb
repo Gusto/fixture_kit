@@ -3,10 +3,9 @@
 require "active_record/fixtures"
 
 module FixtureKit
-  # Runs arbitrary code inside ActiveRecord::TestFixtures lifecycle without
-  # defining a real test example. This gives us Rails' transactional handling
-  # across all configured writing pools.
-  class TransactionalHarness
+  # Base generator used to generate fixture caches.
+  # By default this only wraps execution in ActiveRecord::TestFixtures.
+  class Generator
     include ActiveRecord::TestFixtures
 
     def self.run(&block)
@@ -16,7 +15,7 @@ module FixtureKit
     # ActiveRecord::TestFixtures checks `name` to decide whether the current
     # method is marked with `uses_transaction`.
     def name
-      "fixture_kit_transactional_harness"
+      "fixture_kit_generator"
     end
 
     def run

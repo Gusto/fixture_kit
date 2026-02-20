@@ -27,14 +27,15 @@ module FixtureKit
     end
 
     # Generate cache only (used for pregeneration in before(:suite))
-    # Wraps execution in ActiveRecord::TestFixtures transactional lifecycle,
-    # so no data persists across configured writing pools.
+    # Wraps execution in the configured generator lifecycle.
+    # The default generator uses ActiveRecord::TestFixtures transactions.
+    # Entry points (like `fixture_kit/rspec`) can install richer generators.
     # Always regenerates the cache, even if one exists
     def generate_cache_only
       # Clear any existing cache for this fixture
       FixtureCache.clear(@fixture_name.to_s)
 
-      FixtureKit::TransactionalHarness.run do
+      FixtureKit.configuration.generator.run do
         execute_and_cache
       end
 

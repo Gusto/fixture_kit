@@ -13,6 +13,7 @@ RSpec.describe FixtureKit::FixtureCache do
     FixtureKit.configure do |config|
       config.cache_path = cache_path
       config.fixture_path = fixture_path
+      config.generator = FixtureKit::RSpec::Generator
     end
 
     # Clear both disk and memory cache before each test
