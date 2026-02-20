@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
 require "fixture_kit"
+require_relative "rspec/declaration"
 
 module FixtureKit
   module RSpec
+    DECLARATION_METADATA_KEY = :fixture_kit_declaration
+    PRESERVE_CACHE_ENV_KEY = "FIXTURE_KIT_PRESERVE_CACHE"
+
     # Class methods (extended via config.extend)
     module ClassMethods
       # Declare which fixture to use for this example group.
@@ -26,7 +30,7 @@ module FixtureKit
       #     end
       #   end
       def fixture(name)
-        metadata[:fixture_name] = name.to_s
+        metadata[FixtureKit::RSpec::DECLARATION_METADATA_KEY] = FixtureKit::RSpec::Declaration.new(name)
       end
     end
 
@@ -35,12 +39,7 @@ module FixtureKit
       # Returns the FixtureSet for the current example's fixture.
       # Access exposed records as methods: fixture.alice, fixture.posts
       def fixture
-        @_fixture_loaded ||= begin
-          fixture_name = self.class.metadata[:fixture_name]
-          raise "No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block." unless fixture_name
-
-          FixtureKit::FixtureRegistry.load_fixture(fixture_name)
-        end
+        @_fixture_kit_fixture_set || raise("No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block.")
       end
     end
   end
@@ -51,12 +50,19 @@ RSpec.configure do |config|
   config.extend FixtureKit::RSpec::ClassMethods
   config.include FixtureKit::RSpec::InstanceMethods
 
+  # Load declared fixtures at the beginning of each example.
+  # Runs inside transactional fixtures and before user-defined before hooks.
+  config.prepend_before(:example, FixtureKit::RSpec::DECLARATION_METADATA_KEY) do |example|
+    declaration = example.metadata[FixtureKit::RSpec::DECLARATION_METADATA_KEY]
+    @_fixture_kit_fixture_set = declaration.fixture_set
+  end
+
   # Setup caches at suite start based on autogenerate setting
   # - autogenerate=true: Clear all caches (unless FIXTURE_KIT_PRESERVE_CACHE is set)
   # - autogenerate=false: Pre-generate all caches so tests don't fail
   config.before(:suite) do
     if FixtureKit.configuration.autogenerate
-      preserve_cache = ENV["FIXTURE_KIT_PRESERVE_CACHE"].to_s.match?(/\A(1|true|yes)\z/i)
+      preserve_cache = ENV[FixtureKit::RSpec::PRESERVE_CACHE_ENV_KEY].to_s.match?(/\A(1|true|yes)\z/i)
       FixtureKit::FixtureCache.clear unless preserve_cache
     else
       FixtureKit::FixtureCache.pregenerate_all
