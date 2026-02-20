@@ -4,6 +4,9 @@ require "fixture_kit"
 
 module FixtureKit
   module RSpec
+    FIXTURE_METADATA_KEY = :fixture_kit_fixture_name
+    PRESERVE_CACHE_ENV_KEY = "FIXTURE_KIT_PRESERVE_CACHE"
+
     # Class methods (extended via config.extend)
     module ClassMethods
       # Declare which fixture to use for this example group.
@@ -26,7 +29,7 @@ module FixtureKit
       #     end
       #   end
       def fixture(name)
-        metadata[:fixture_name] = name.to_s
+        metadata[FixtureKit::RSpec::FIXTURE_METADATA_KEY] = name.to_s
       end
     end
 
@@ -36,7 +39,7 @@ module FixtureKit
       # Access exposed records as methods: fixture.alice, fixture.posts
       def fixture
         @_fixture_loaded ||= begin
-          fixture_name = self.class.metadata[:fixture_name]
+          fixture_name = self.class.metadata[FixtureKit::RSpec::FIXTURE_METADATA_KEY]
           raise "No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block." unless fixture_name
 
           FixtureKit::FixtureRegistry.load_fixture(fixture_name)
@@ -51,12 +54,18 @@ RSpec.configure do |config|
   config.extend FixtureKit::RSpec::ClassMethods
   config.include FixtureKit::RSpec::InstanceMethods
 
+  # Load declared fixtures at the beginning of each example.
+  # Runs inside transactional fixtures and before user-defined before hooks.
+  config.prepend_before(:example, FixtureKit::RSpec::FIXTURE_METADATA_KEY) do
+    fixture
+  end
+
   # Setup caches at suite start based on autogenerate setting
   # - autogenerate=true: Clear all caches (unless FIXTURE_KIT_PRESERVE_CACHE is set)
   # - autogenerate=false: Pre-generate all caches so tests don't fail
   config.before(:suite) do
     if FixtureKit.configuration.autogenerate
-      preserve_cache = ENV["FIXTURE_KIT_PRESERVE_CACHE"].to_s.match?(/\A(1|true|yes)\z/i)
+      preserve_cache = ENV[FixtureKit::RSpec::PRESERVE_CACHE_ENV_KEY].to_s.match?(/\A(1|true|yes)\z/i)
       FixtureKit::FixtureCache.clear unless preserve_cache
     else
       FixtureKit::FixtureCache.pregenerate_all

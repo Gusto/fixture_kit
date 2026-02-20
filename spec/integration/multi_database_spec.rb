@@ -3,6 +3,18 @@
 require "spec_helper"
 
 RSpec.describe "Multi-database integration" do
+  describe "fixture preload timing" do
+    fixture "teams/basic"
+
+    before do
+      @user_count_in_before_hook = User.count
+    end
+
+    it "loads fixture data before before hooks run" do
+      expect(@user_count_in_before_hook).to eq(2)
+    end
+  end
+
   describe "fixture loading with RSpec DSL" do
     fixture "project_management"
 
@@ -89,17 +101,14 @@ RSpec.describe "Multi-database integration" do
     fixture "project_management"
 
     it "rolls back data after each test (first test)" do
-      fixture
       expect(User.count).to eq(3)
-      # Data will be rolled back after this test
+      User.create!(name: "Temporary User", email: "temp@example.com")
+      expect(User.count).to eq(4)
+      # Temporary user will be rolled back after this test
     end
 
     it "rolls back data after each test (second test)" do
-      # Database should be empty at start (previous test's data rolled back)
-      expect(User.count).to eq(0)
-
-      # Load fixture for this test
-      fixture
+      # Previous test's extra row is rolled back, then fixture is preloaded for this test
       expect(User.count).to eq(3)
     end
   end
