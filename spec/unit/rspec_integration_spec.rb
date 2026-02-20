@@ -3,6 +3,20 @@
 require "spec_helper"
 
 RSpec.describe "RSpec integration" do
+  describe "generator configuration" do
+    it "sets RSpec generator by default" do
+      expect(FixtureKit.configuration.generator).to eq(FixtureKit::RSpec::Generator)
+    end
+
+    it "keeps RSpec generator when configure does not override it" do
+      FixtureKit.configure do |config|
+        config.fixture_path = "spec/fixture_kit"
+      end
+
+      expect(FixtureKit.configuration.generator).to eq(FixtureKit::RSpec::Generator)
+    end
+  end
+
   describe "FIXTURE_KIT_PRESERVE_CACHE environment variable" do
     # Note: The before(:suite) hook runs once at test suite start, so we can't
     # directly test its behavior. These tests verify the env var parsing logic.

@@ -2,6 +2,7 @@
 
 require "fixture_kit"
 require_relative "rspec/declaration"
+require_relative "rspec/generator"
 
 module FixtureKit
   module RSpec
@@ -44,6 +45,9 @@ module FixtureKit
     end
   end
 end
+
+# Install the RSpec generator by default for this entrypoint.
+FixtureKit.configuration.generator = FixtureKit::RSpec::Generator
 
 # Configure RSpec integration
 RSpec.configure do |config|

@@ -33,10 +33,19 @@ RSpec.configure do |config|
   # Use transactional fixtures - each test runs in a transaction that rolls back
   config.use_transactional_fixtures = true
 
-  # Reset FixtureKit configuration before each test
-  config.before(:each) do
-    FixtureKit.configuration.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
-    FixtureKit.configuration.fixture_path = Rails.root.join("spec/fixture_kit").to_s
+  # Keep fixture_kit configuration isolated per example.
+  config.around(:each) do |example|
+    previous_cache_path = FixtureKit.configuration.cache_path
+    previous_fixture_path = FixtureKit.configuration.fixture_path
+    previous_autogenerate = FixtureKit.configuration.autogenerate
+    previous_generator = FixtureKit.configuration.generator
+
+    example.run
+  ensure
+    FixtureKit.configuration.cache_path = previous_cache_path
+    FixtureKit.configuration.fixture_path = previous_fixture_path
+    FixtureKit.configuration.autogenerate = previous_autogenerate
+    FixtureKit.configuration.generator = previous_generator
   end
 
   # Clean up cache after suite

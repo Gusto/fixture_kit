@@ -82,4 +82,5 @@ end
 FixtureKit.configure do |config|
   config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
   config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
+  config.generator = FixtureKit::RSpec::Generator if defined?(FixtureKit::RSpec::Generator)
 end

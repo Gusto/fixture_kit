@@ -104,6 +104,8 @@ RSpec.describe Book do
 end
 ```
 
+`fixture` returns a `FixtureSet` and exposes records as methods (for example, `fixture.owner`).
+
 ### 3. Configure RSpec
 
 ```ruby
@@ -128,14 +130,25 @@ FixtureKit.configure do |config|
 
   # Whether to regenerate caches on every run (default: true)
   config.autogenerate = true
+
+  # Optional: customize how pregeneration is wrapped.
+  # Default is FixtureKit::TestCase::Generator.
+  # config.generator = FixtureKit::TestCase::Generator
 end
 ```
+
+Custom generators should subclass `FixtureKit::Generator` and implement `#run`.
+`#run` receives the pregeneration block and should execute it in whatever lifecycle you need.
 
 ### Autogenerate
 
 When `autogenerate` is `true` (the default), FixtureKit clears all caches at the start of each test run, then regenerates them on first use. Subsequent tests that use the same fixture reuse the cache from earlier in the run. This ensures your test data always matches your fixture definitions.
 
-When `autogenerate` is `false`, FixtureKit pre-generates all fixture caches at suite start. This happens in rolled-back transactions so no data persists to the database. Any fixtures that already have caches are skipped. This mode is useful for CI where you want consistent, predictable cache generation.
+When `autogenerate` is `false`, FixtureKit pre-generates all fixture caches at suite start. This runs through the configured `generator`, and still rolls back database changes.
+
+By default, FixtureKit uses `FixtureKit::TestCase::Generator`, which runs pregeneration inside an internal `ActiveSupport::TestCase` so setup/teardown hooks and transactional fixture behavior run as expected. The internal test case is removed from Minitest runnables, so it does not count toward suite totals.
+
+When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpec::Generator` as the generator. This runs pregeneration inside an internal RSpec example so your normal `before`/`around`/`after` hooks apply. The internal example uses a null reporter, so it does not count toward suite example totals.
 
 ### Preserving Cache Locally
 
