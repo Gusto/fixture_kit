@@ -43,5 +43,8 @@ jobs:
           ruby-version: "3.4"
           bundler-cache: true
 
+      - name: Check appraisal lockfiles
+        run: ruby bin/check-appraisal-lockfiles
+
       - name: Check Ruby syntax
         run: ruby -c lib/**/*.rb

@@ -1,0 +1,43 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "../lib/fixture_kit/version"
+
+root = File.expand_path("..", __dir__)
+expected_version = FixtureKit::VERSION
+gemfiles = Dir.glob(File.join(root, "gemfiles", "*.gemfile")).sort
+errors = []
+
+if gemfiles.empty?
+  errors << "No appraisal gemfiles found in gemfiles/*.gemfile."
+end
+
+gemfiles.each do |gemfile|
+  lockfile = "#{gemfile}.lock"
+  relative_lockfile = lockfile.delete_prefix("#{root}/")
+
+  unless File.exist?(lockfile)
+    errors << "#{relative_lockfile} is missing."
+    next
+  end
+
+  versions = File.read(lockfile).scan(/^\s*fixture_kit \(([^)]+)\)$/).flatten.uniq
+
+  if versions.empty?
+    errors << "#{relative_lockfile} does not contain a fixture_kit version entry."
+    next
+  end
+
+  next if versions == [expected_version]
+
+  errors << "#{relative_lockfile} has fixture_kit version(s) #{versions.join(", ")}, expected #{expected_version}."
+end
+
+if errors.any?
+  warn "Appraisal lockfile check failed:"
+  errors.each { |error| warn "- #{error}" }
+  warn "Run `bundle exec appraisal install` and commit updated gemfiles/*.gemfile.lock files."
+  exit 1
+end
+
+puts "Appraisal lockfile check passed for #{gemfiles.size} gemfile(s)."
