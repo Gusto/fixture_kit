@@ -11,7 +11,8 @@ require "fixture_kit"
 
 module Dummy
   class Application < Rails::Application
-    config.load_defaults 8.1
+    rails_defaults_version = "#{Rails::VERSION::MAJOR}.#{Rails::VERSION::MINOR}"
+    config.load_defaults rails_defaults_version
     config.eager_load = false
 
     # Set the root to the dummy directory

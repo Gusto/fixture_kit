@@ -17,6 +17,7 @@ module FixtureKit
   autoload :SqlCapture,      File.expand_path("fixture_kit/sql_capture", __dir__)
   autoload :FixtureCache,    File.expand_path("fixture_kit/fixture_cache", __dir__)
   autoload :FixtureRunner,   File.expand_path("fixture_kit/fixture_runner", __dir__)
+  autoload :TransactionalHarness, File.expand_path("fixture_kit/transactional_harness", __dir__)
 
   extend Singleton
 end

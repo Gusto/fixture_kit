@@ -264,11 +264,15 @@ RSpec.describe FixtureKit::FixtureCache do
     it "does not persist data to database" do
       # Database should be empty before
       expect(User.count).to eq(0)
+      expect(ActivityLog.count).to eq(0)
+      expect(TimeEntry.count).to eq(0)
 
       described_class.pregenerate_all
 
       # Database should still be empty (transactions rolled back)
       expect(User.count).to eq(0)
+      expect(ActivityLog.count).to eq(0)
+      expect(TimeEntry.count).to eq(0)
 
       # But caches should exist
       project_cache = File.join(cache_path, "project_management.json")
