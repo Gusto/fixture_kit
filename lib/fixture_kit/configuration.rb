@@ -10,7 +10,7 @@ module FixtureKit
     def initialize
       @fixture_path = nil
       @cache_path = nil
-      @generator = FixtureKit::Generator
+      @generator = FixtureKit::TestCase::Generator
       @autogenerate = true
     end
 

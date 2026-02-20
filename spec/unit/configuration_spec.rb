@@ -4,8 +4,8 @@ require "spec_helper"
 
 RSpec.describe FixtureKit::Configuration do
   describe "#generator" do
-    it "defaults to FixtureKit::Generator" do
-      expect(described_class.new.generator).to eq(FixtureKit::Generator)
+    it "defaults to FixtureKit::TestCase::Generator" do
+      expect(described_class.new.generator).to eq(FixtureKit::TestCase::Generator)
     end
 
     it "returns an explicitly configured class" do

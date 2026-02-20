@@ -19,6 +19,7 @@ module FixtureKit
   autoload :FixtureCache,    File.expand_path("fixture_kit/fixture_cache", __dir__)
   autoload :FixtureRunner,   File.expand_path("fixture_kit/fixture_runner", __dir__)
   autoload :Generator,       File.expand_path("fixture_kit/generator", __dir__)
+  autoload :TestCase,        File.expand_path("fixture_kit/test_case", __dir__)
 
   extend Singleton
 end
