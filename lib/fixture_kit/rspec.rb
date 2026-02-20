@@ -4,8 +4,16 @@ require "fixture_kit"
 
 module FixtureKit
   module RSpec
-    FIXTURE_METADATA_KEY = :fixture_kit_fixture_name
+    DECLARATION_METADATA_KEY = :fixture_kit_declaration
     PRESERVE_CACHE_ENV_KEY = "FIXTURE_KIT_PRESERVE_CACHE"
+
+    class Declaration
+      attr_reader :name
+
+      def initialize(name)
+        @name = name.to_s
+      end
+    end
 
     # Class methods (extended via config.extend)
     module ClassMethods
@@ -29,7 +37,7 @@ module FixtureKit
       #     end
       #   end
       def fixture(name)
-        metadata[FixtureKit::RSpec::FIXTURE_METADATA_KEY] = name.to_s
+        metadata[FixtureKit::RSpec::DECLARATION_METADATA_KEY] = FixtureKit::RSpec::Declaration.new(name)
       end
     end
 
@@ -38,12 +46,7 @@ module FixtureKit
       # Returns the FixtureSet for the current example's fixture.
       # Access exposed records as methods: fixture.alice, fixture.posts
       def fixture
-        @_fixture_loaded ||= begin
-          fixture_name = self.class.metadata[FixtureKit::RSpec::FIXTURE_METADATA_KEY]
-          raise "No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block." unless fixture_name
-
-          FixtureKit::FixtureRegistry.load_fixture(fixture_name)
-        end
+        @_fixture_kit_fixture_set || raise("No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block.")
       end
     end
   end
@@ -56,8 +59,9 @@ RSpec.configure do |config|
 
   # Load declared fixtures at the beginning of each example.
   # Runs inside transactional fixtures and before user-defined before hooks.
-  config.prepend_before(:example, FixtureKit::RSpec::FIXTURE_METADATA_KEY) do
-    fixture
+  config.prepend_before(:example, FixtureKit::RSpec::DECLARATION_METADATA_KEY) do |example|
+    declaration = example.metadata[FixtureKit::RSpec::DECLARATION_METADATA_KEY]
+    @_fixture_kit_fixture_set = FixtureKit::FixtureRegistry.load_fixture(declaration.name)
   end
 
   # Setup caches at suite start based on autogenerate setting
