@@ -38,7 +38,7 @@ module FixtureKit
 
     # Instance methods (included via config.include)
     module InstanceMethods
-      # Returns the FixtureSet for the current example's fixture.
+      # Returns the Repository for the current example's fixture.
       # Access exposed records as methods: fixture.alice, fixture.posts
       def fixture
         @_fixture_kit_fixture_set || raise("No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block.")
@@ -63,10 +63,10 @@ module FixtureKit
         config.before(:suite) do
           if FixtureKit.configuration.autogenerate
             preserve_cache = ENV[PRESERVE_CACHE_ENV_KEY].to_s.match?(/\A(1|true|yes)\z/i)
-            FixtureCache.clear unless preserve_cache
+            Cache.clear unless preserve_cache
           else
             fixture_names_for_loaded_examples.each do |fixture_name|
-              FixtureCache.generate(fixture_name)
+              Cache.generate(fixture_name)
             end
           end
         end

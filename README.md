@@ -104,7 +104,7 @@ RSpec.describe Book do
 end
 ```
 
-`fixture` returns a `FixtureSet` and exposes records as methods (for example, `fixture.owner`).
+`fixture` returns a `Repository` and exposes records as methods (for example, `fixture.owner`).
 
 ### 3. Configure RSpec
 

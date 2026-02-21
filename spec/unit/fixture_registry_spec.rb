@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe FixtureKit::FixtureRegistry do
+RSpec.describe FixtureKit::Registry do
   describe ".fetch" do
     let(:fixture_path) { Rails.root.join("spec/fixture_kit").to_s }
 

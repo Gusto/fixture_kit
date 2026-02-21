@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe FixtureKit::FixtureRunner do
+RSpec.describe FixtureKit::Runner do
   describe "#run" do
     it "does not use the configured generator when force is true" do
       generator = class_double("CustomGenerator")

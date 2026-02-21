@@ -3,14 +3,14 @@
 require "active_support/inflector"
 
 module FixtureKit
-  class FixtureRunner
+  class Runner
     def self.run(fixture_name, force: false)
       new(fixture_name).run(force: force)
     end
 
     def initialize(fixture_name)
       @fixture_name = fixture_name
-      @cache = FixtureCache.new(@fixture_name)
+      @cache = Cache.new(@fixture_name)
     end
 
     def run(force: false)
@@ -35,7 +35,7 @@ module FixtureKit
     private
 
     def execute_and_cache
-      fixture = FixtureRegistry.fetch(@fixture_name)
+      fixture = Registry.fetch(@fixture_name)
 
       # Start capturing SQL
       capture = SqlCapture.new
@@ -53,8 +53,8 @@ module FixtureKit
         exposed_mapping: build_exposed_mapping(exposed)
       )
 
-      # Return FixtureSet from the exposed records
-      FixtureSet.new(exposed)
+      # Return Repository from the exposed records
+      Repository.new(exposed)
     end
 
     def execute_from_cache
@@ -69,8 +69,8 @@ module FixtureKit
         connection.execute(sql)
       end
 
-      # Query exposed records and build FixtureSet
-      @cache.build_fixture_set
+      # Query exposed records and build Repository.
+      @cache.build_repository
     end
 
     def build_exposed_mapping(exposed)

@@ -22,14 +22,14 @@ module FixtureKit
       name = relative_path.to_s.sub(/\.rb$/, "")
 
       fixture = Fixture.new(name, &block)
-      FixtureRegistry.register(fixture)
+      Registry.register(fixture)
       fixture
     end
 
     def reset
       @configuration = nil
-      FixtureRegistry.reset
-      FixtureCache.clear_memory_cache
+      Registry.reset
+      Cache.clear_memory_cache
     end
   end
 end
