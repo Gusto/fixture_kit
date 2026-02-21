@@ -36,14 +36,19 @@ module FixtureKit
 
       # Pre-generate caches for all fixtures.
       # Each fixture is generated in a transaction that rolls back, so no data persists.
-      def pregenerate_all
-        fixture_path = FixtureKit.configuration.fixture_path
+      def pregenerate_all(fixture_names = nil)
+        names = Array.wrap(fixture_names).map(&:to_s).uniq
 
-        # First, load all fixture files to register them
-        FixtureRegistry.load_definitions(fixture_path)
+        if names.empty?
+          fixture_path = FixtureKit.configuration.fixture_path
 
-        # Then iterate over the registry and generate caches
-        FixtureRegistry.all_names.each do |name|
+          # First, load all fixture files to register them
+          FixtureRegistry.load_definitions(fixture_path)
+          names = FixtureRegistry.all_names
+        end
+
+        # Then iterate over the selected fixtures and generate caches
+        names.each do |name|
           runner = FixtureRunner.new(name)
           runner.generate_cache_only
         end

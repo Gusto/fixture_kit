@@ -297,5 +297,15 @@ RSpec.describe FixtureKit::FixtureCache do
       expect(cache_data["records"]).to have_key("User")
       expect(cache_data["exposed"]).to have_key("alice")
     end
+
+    it "can generate caches for selected fixtures only" do
+      project_cache = File.join(cache_path, "project_management.json")
+      teams_cache = File.join(cache_path, "teams/basic.json")
+
+      described_class.pregenerate_all(["project_management"])
+
+      expect(File.exist?(project_cache)).to be(true)
+      expect(File.exist?(teams_cache)).to be(false)
+    end
   end
 end

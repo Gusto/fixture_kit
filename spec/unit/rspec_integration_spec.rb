@@ -3,6 +3,32 @@
 require "spec_helper"
 
 RSpec.describe "RSpec integration" do
+  describe ".fixture_names_for_loaded_examples" do
+    it "collects unique fixture names from loaded examples" do
+      metadata_key = FixtureKit::RSpec::DECLARATION_METADATA_KEY
+      project_declaration = FixtureKit::RSpec::Declaration.new("project_management")
+      teams_declaration = FixtureKit::RSpec::Declaration.new("teams/basic")
+      world = instance_double(
+        RSpec::Core::World,
+        filtered_examples: {
+          group_a: [
+            instance_double(RSpec::Core::Example, metadata: { metadata_key => project_declaration }),
+            instance_double(RSpec::Core::Example, metadata: { metadata_key => project_declaration })
+          ],
+          group_b: [
+            instance_double(RSpec::Core::Example, metadata: { metadata_key => teams_declaration }),
+            instance_double(RSpec::Core::Example, metadata: {})
+          ]
+        }
+      )
+
+      allow(RSpec).to receive(:world).and_return(world)
+
+      expect(FixtureKit::RSpec.fixture_names_for_loaded_examples)
+        .to eq(["project_management", "teams/basic"])
+    end
+  end
+
   describe ".configure!" do
     it "registers the suite cache hook lazily" do
       config = double("RSpec config")
@@ -28,6 +54,32 @@ RSpec.describe "RSpec integration" do
       first_matching_callback.call
 
       expect(suite_callback).to be_a(Proc)
+    end
+
+    it "pregenerates only loaded fixture names when autogenerate is disabled" do
+      config = double("RSpec config")
+      first_matching_callback = nil
+      suite_callback = nil
+
+      allow(config).to receive(:extend)
+      allow(config).to receive(:include)
+      allow(config).to receive(:prepend_before)
+      allow(config).to receive(:before) do |scope, &block|
+        suite_callback = block if scope == :suite
+      end
+      allow(config).to receive(:when_first_matching_example_defined) do |_metadata, &block|
+        first_matching_callback = block
+      end
+
+      FixtureKit.configuration.autogenerate = false
+      allow(FixtureKit::RSpec).to receive(:fixture_names_for_loaded_examples).and_return(["project_management"])
+      allow(FixtureKit::FixtureCache).to receive(:pregenerate_all)
+
+      FixtureKit::RSpec.configure!(config)
+      first_matching_callback.call
+      suite_callback.call
+
+      expect(FixtureKit::FixtureCache).to have_received(:pregenerate_all).with(["project_management"])
     end
   end
 

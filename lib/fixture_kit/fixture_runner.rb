@@ -45,7 +45,7 @@ module FixtureKit
     private
 
     def execute_and_cache
-      fixture = FixtureRegistry.find(@fixture_name)
+      fixture = FixtureRegistry.find(@fixture_name) || load_fixture_definition
       raise ArgumentError, "Fixture '#{@fixture_name}' not found" unless fixture
 
       # Start capturing SQL
@@ -66,6 +66,15 @@ module FixtureKit
 
       # Return FixtureSet from the exposed records
       FixtureSet.new(exposed)
+    end
+
+    def load_fixture_definition
+      fixture_path = FixtureKit.configuration.fixture_path
+      file_path = File.expand_path(File.join(fixture_path, "#{@fixture_name}.rb"))
+      load file_path
+      FixtureRegistry.find(@fixture_name)
+    rescue LoadError, Errno::ENOENT
+      nil
     end
 
     def execute_from_cache
