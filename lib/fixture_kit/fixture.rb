@@ -5,7 +5,7 @@ module FixtureKit
     attr_reader :name, :block
 
     def initialize(name, &block)
-      @name = name.to_sym
+      @name = name
       @block = block
     end
 

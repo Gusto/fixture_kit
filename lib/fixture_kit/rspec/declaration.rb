@@ -10,7 +10,7 @@ module FixtureKit
       end
 
       def fixture_set
-        FixtureKit::FixtureRegistry.load_fixture(name)
+        FixtureKit::FixtureRunner.run(name)
       end
     end
   end

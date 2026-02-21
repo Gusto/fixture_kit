@@ -10,7 +10,7 @@ require "fixture_kit"
 
 # Helper to load fixtures in tests (wraps internal API)
 def load_fixture(name)
-  FixtureKit::FixtureRegistry.load_fixture(name)
+  FixtureKit::FixtureRunner.run(name)
 end
 
 # Helper to clear fixture cache in tests

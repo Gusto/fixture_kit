@@ -65,19 +65,21 @@ module FixtureKit
             preserve_cache = ENV[PRESERVE_CACHE_ENV_KEY].to_s.match?(/\A(1|true|yes)\z/i)
             FixtureCache.clear unless preserve_cache
           else
-            FixtureCache.pregenerate_all(fixture_names_for_loaded_examples)
+            fixture_names_for_loaded_examples.each do |fixture_name|
+              FixtureCache.generate(fixture_name)
+            end
           end
         end
       end
     end
 
     def self.fixture_names_for_loaded_examples
-      ::RSpec.world.filtered_examples.values.flat_map do |examples|
-        examples.filter_map do |example|
+      ::RSpec.world.filtered_examples.each_value.with_object(Set.new) do |examples, names|
+        examples.each do |example|
           declaration = example.metadata[DECLARATION_METADATA_KEY]
-          declaration&.name
+          names << declaration.name if declaration
         end
-      end.uniq
+      end.to_a
     end
   end
 end

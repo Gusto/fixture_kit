@@ -3,51 +3,55 @@
 module FixtureKit
   module FixtureRegistry
     class << self
-      def register(fixture)
-        fixtures[fixture.name.to_s] = fixture
+      def fetch(name)
+        fixture = find(name)
+        return fixture if fixture
+
+        file_path = fixture_file_path(name)
+        unless File.file?(file_path)
+          raise FixtureKit::FixtureDefinitionNotFound,
+            "Could not find fixture definition file for '#{name}' at '#{file_path}'"
+        end
+
+        load file_path
+        find(name)
       end
 
       def find(name)
-        fixtures[name.to_s]
+        registry[name.to_s]
       end
 
-      def all_names
-        fixtures.keys
+      def fixtures
+        registry.values
       end
 
-      # Load all fixture definition files from the given path.
+      def register(fixture)
+        registry[fixture.name.to_s] = fixture
+      end
+
+      # Load all fixture definition files.
       # Uses `load` instead of `require` to ensure fixtures are registered
       # even if the files were previously required (e.g., after a reset).
-      def load_definitions(fixture_path)
+      def load_definitions
+        fixture_path = FixtureKit.configuration.fixture_path
         Dir.glob(File.join(fixture_path, "**/*.rb")).each do |file|
           load file
         end
       end
 
       def reset
-        @fixtures = nil
-      end
-
-      # Load a fixture's records into the database and return a FixtureSet.
-      # Uses cached INSERT statements if available, otherwise executes fixture and caches.
-      def load_fixture(name)
-        name = name.to_s
-
-        # Load the file on-demand if fixture not yet registered
-        unless find(name)
-          fixture_path = FixtureKit.configuration.fixture_path
-          file_path = File.expand_path(File.join(fixture_path, "#{name}.rb"))
-          load file_path
-        end
-
-        runner = FixtureRunner.new(name)
-        runner.run
+        @registry = nil
       end
 
       private
 
-      def fixtures
-        @fixtures ||= {}
+      def fixture_file_path(name)
+        fixture_path = FixtureKit.configuration.fixture_path
+        File.expand_path(File.join(fixture_path, "#{name}.rb"))
+      end
+
+      def registry
+        @registry ||= {}
       end
     end
   end

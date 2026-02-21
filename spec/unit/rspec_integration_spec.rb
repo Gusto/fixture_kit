@@ -73,13 +73,13 @@ RSpec.describe "RSpec integration" do
 
       FixtureKit.configuration.autogenerate = false
       allow(FixtureKit::RSpec).to receive(:fixture_names_for_loaded_examples).and_return(["project_management"])
-      allow(FixtureKit::FixtureCache).to receive(:pregenerate_all)
+      allow(FixtureKit::FixtureCache).to receive(:generate)
 
       FixtureKit::RSpec.configure!(config)
       first_matching_callback.call
       suite_callback.call
 
-      expect(FixtureKit::FixtureCache).to have_received(:pregenerate_all).with(["project_management"])
+      expect(FixtureKit::FixtureCache).to have_received(:generate).with("project_management")
     end
   end
 

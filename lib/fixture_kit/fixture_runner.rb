@@ -4,13 +4,19 @@ require "active_support/inflector"
 
 module FixtureKit
   class FixtureRunner
+    def self.run(fixture_name, force: false)
+      new(fixture_name).run(force: force)
+    end
+
     def initialize(fixture_name)
       @fixture_name = fixture_name.to_sym
       @cache = FixtureCache.new(@fixture_name)
     end
 
-    def run
-      if @cache.exists?
+    def run(force: false)
+      if force
+        execute_and_cache
+      elsif @cache.exists?
         execute_from_cache
       elsif FixtureKit.configuration.autogenerate
         execute_and_cache
@@ -26,27 +32,10 @@ module FixtureKit
       end
     end
 
-    # Generate cache only (used for pregeneration in before(:suite))
-    # Wraps execution in the configured generator lifecycle.
-    # The default generator uses ActiveRecord::TestFixtures transactions.
-    # Entry points (like `fixture_kit/rspec`) can install richer generators.
-    # Always regenerates the cache, even if one exists
-    def generate_cache_only
-      # Clear any existing cache for this fixture
-      FixtureCache.clear(@fixture_name.to_s)
-
-      FixtureKit.configuration.generator.run do
-        execute_and_cache
-      end
-
-      true
-    end
-
     private
 
     def execute_and_cache
-      fixture = FixtureRegistry.find(@fixture_name) || load_fixture_definition
-      raise ArgumentError, "Fixture '#{@fixture_name}' not found" unless fixture
+      fixture = FixtureRegistry.fetch(@fixture_name)
 
       # Start capturing SQL
       capture = SqlCapture.new
@@ -66,15 +55,6 @@ module FixtureKit
 
       # Return FixtureSet from the exposed records
       FixtureSet.new(exposed)
-    end
-
-    def load_fixture_definition
-      fixture_path = FixtureKit.configuration.fixture_path
-      file_path = File.expand_path(File.join(fixture_path, "#{@fixture_name}.rb"))
-      load file_path
-      FixtureRegistry.find(@fixture_name)
-    rescue LoadError, Errno::ENOENT
-      nil
     end
 
     def execute_from_cache

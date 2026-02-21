@@ -6,6 +6,7 @@ module FixtureKit
   class DuplicateNameError < Error; end
   class CacheMissingError < Error; end
   class PregenerationError < Error; end
+  class FixtureDefinitionNotFound < Error; end
   class ExposedRecordNotFound < Error; end
 
   autoload :VERSION,         File.expand_path("fixture_kit/version", __dir__)
