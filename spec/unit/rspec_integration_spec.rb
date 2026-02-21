@@ -3,6 +3,34 @@
 require "spec_helper"
 
 RSpec.describe "RSpec integration" do
+  describe ".configure!" do
+    it "registers the suite cache hook lazily" do
+      config = double("RSpec config")
+      first_matching_callback = nil
+      suite_callback = nil
+
+      allow(config).to receive(:extend)
+      allow(config).to receive(:include)
+      allow(config).to receive(:prepend_before)
+      allow(config).to receive(:before) do |scope, &block|
+        suite_callback = block if scope == :suite
+      end
+      allow(config).to receive(:when_first_matching_example_defined) do |metadata, &block|
+        expect(metadata).to eq(FixtureKit::RSpec::DECLARATION_METADATA_KEY)
+        first_matching_callback = block
+      end
+
+      FixtureKit::RSpec.configure!(config)
+
+      expect(first_matching_callback).to be_a(Proc)
+      expect(suite_callback).to be_nil
+
+      first_matching_callback.call
+
+      expect(suite_callback).to be_a(Proc)
+    end
+  end
+
   describe "generator configuration" do
     it "sets RSpec generator by default" do
       expect(FixtureKit.configuration.generator).to eq(FixtureKit::RSpec::Generator)

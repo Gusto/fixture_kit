@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require "fixture_kit"
-require_relative "rspec/declaration"
-require_relative "rspec/generator"
 
 module FixtureKit
   module RSpec
+    autoload :Declaration, File.expand_path("rspec/declaration", __dir__)
+    autoload :Generator, File.expand_path("rspec/generator", __dir__)
+
     DECLARATION_METADATA_KEY = :fixture_kit_declaration
     PRESERVE_CACHE_ENV_KEY = "FIXTURE_KIT_PRESERVE_CACHE"
 
@@ -31,7 +32,7 @@ module FixtureKit
       #     end
       #   end
       def fixture(name)
-        metadata[FixtureKit::RSpec::DECLARATION_METADATA_KEY] = FixtureKit::RSpec::Declaration.new(name)
+        metadata[DECLARATION_METADATA_KEY] = Declaration.new(name)
       end
     end
 
@@ -43,33 +44,34 @@ module FixtureKit
         @_fixture_kit_fixture_set || raise("No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block.")
       end
     end
-  end
-end
 
-# Install the RSpec generator by default for this entrypoint.
-FixtureKit.configuration.generator = FixtureKit::RSpec::Generator
+    def self.configure!(config)
+      FixtureKit.configuration.generator = Generator
+      config.extend ClassMethods
+      config.include InstanceMethods
 
-# Configure RSpec integration
-RSpec.configure do |config|
-  config.extend FixtureKit::RSpec::ClassMethods
-  config.include FixtureKit::RSpec::InstanceMethods
+      # Load declared fixtures at the beginning of each example.
+      # Runs inside transactional fixtures and before user-defined before hooks.
+      config.prepend_before(:example, DECLARATION_METADATA_KEY) do |example|
+        declaration = example.metadata[DECLARATION_METADATA_KEY]
+        @_fixture_kit_fixture_set = declaration.fixture_set
+      end
 
-  # Load declared fixtures at the beginning of each example.
-  # Runs inside transactional fixtures and before user-defined before hooks.
-  config.prepend_before(:example, FixtureKit::RSpec::DECLARATION_METADATA_KEY) do |example|
-    declaration = example.metadata[FixtureKit::RSpec::DECLARATION_METADATA_KEY]
-    @_fixture_kit_fixture_set = declaration.fixture_set
-  end
-
-  # Setup caches at suite start based on autogenerate setting
-  # - autogenerate=true: Clear all caches (unless FIXTURE_KIT_PRESERVE_CACHE is set)
-  # - autogenerate=false: Pre-generate all caches so tests don't fail
-  config.before(:suite) do
-    if FixtureKit.configuration.autogenerate
-      preserve_cache = ENV[FixtureKit::RSpec::PRESERVE_CACHE_ENV_KEY].to_s.match?(/\A(1|true|yes)\z/i)
-      FixtureKit::FixtureCache.clear unless preserve_cache
-    else
-      FixtureKit::FixtureCache.pregenerate_all
+      # Setup caches at suite start only when at least one fixture-backed
+      # example exists in the loaded suite.
+      config.when_first_matching_example_defined(DECLARATION_METADATA_KEY) do
+        config.before(:suite) do
+          if FixtureKit.configuration.autogenerate
+            preserve_cache = ENV[PRESERVE_CACHE_ENV_KEY].to_s.match?(/\A(1|true|yes)\z/i)
+            FixtureCache.clear unless preserve_cache
+          else
+            FixtureCache.pregenerate_all
+          end
+        end
+      end
     end
   end
 end
+
+# Configure RSpec integration
+FixtureKit::RSpec.configure!(RSpec.configuration)
