@@ -6,7 +6,7 @@ require "active_support/core_ext/array/wrap"
 require "active_support/inflector"
 
 module FixtureKit
-  class FixtureCache
+  class Cache
     # In-memory cache to avoid re-reading/parsing JSON for every test
     @memory_cache = {}
 
@@ -37,15 +37,15 @@ module FixtureKit
       # Generate caches for all fixtures.
       # Each fixture is generated in a transaction that rolls back, so no data persists.
       def generate_all
-        FixtureRegistry.load_definitions
-        FixtureRegistry.fixtures.each { |fixture| generate(fixture.name) }
+        Registry.load_definitions
+        Registry.fixtures.each { |fixture| generate(fixture.name) }
       end
 
       def generate(fixture_name)
         clear(fixture_name)
 
         FixtureKit.configuration.generator.run do
-          FixtureRunner.run(fixture_name, force: true)
+          Runner.run(fixture_name, force: true)
         end
       end
     end
@@ -107,15 +107,15 @@ module FixtureKit
       File.write(cache_file_path, JSON.pretty_generate(data))
     end
 
-    # Query exposed records from the database and return a FixtureSet
-    def build_fixture_set
+    # Query exposed records from the database and return a Repository.
+    def build_repository
       exposed_records = @exposed.each_with_object({}) do |(name, value), hash|
         was_array = value.is_a?(Array)
         records = Array.wrap(value).map { |record_info| find_exposed_record(record_info.fetch("model"), record_info.fetch("id"), name) }
         hash[name.to_sym] = was_array ? records : records.first
       end
 
-      FixtureSet.new(exposed_records)
+      Repository.new(exposed_records)
     end
 
     private

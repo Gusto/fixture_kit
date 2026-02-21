@@ -10,7 +10,7 @@ module FixtureKit
     end
 
     def execute
-      context = FixtureContext.new
+      context = DefinitionContext.new
       context.instance_eval(&block) if block
       context.exposed
     end

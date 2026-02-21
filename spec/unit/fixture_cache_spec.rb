@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe FixtureKit::FixtureCache do
+RSpec.describe FixtureKit::Cache do
   let(:cache_path) { Rails.root.join("tmp/cache/fixture_kit_test").to_s }
   let(:fixture_path) { Rails.root.join("spec/fixture_kit").to_s }
   let(:fixture_name) { "test_fixture" }
@@ -306,7 +306,7 @@ RSpec.describe FixtureKit::FixtureCache do
 
       expect(generator).to receive(:run).and_yield
       expect(described_class).to receive(:clear).with("project_management")
-      expect(FixtureKit::FixtureRunner).to receive(:run).with("project_management", force: true)
+      expect(FixtureKit::Runner).to receive(:run).with("project_management", force: true)
 
       described_class.generate("project_management")
     ensure

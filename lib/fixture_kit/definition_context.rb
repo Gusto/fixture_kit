@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module FixtureKit
-  class FixtureContext
+  class DefinitionContext
     attr_reader :exposed
 
     def initialize

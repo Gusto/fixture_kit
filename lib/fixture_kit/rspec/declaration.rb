@@ -10,7 +10,7 @@ module FixtureKit
       end
 
       def fixture_set
-        FixtureKit::FixtureRunner.run(name)
+        FixtureKit::Runner.run(name)
       end
     end
   end

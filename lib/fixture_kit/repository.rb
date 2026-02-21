@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module FixtureKit
-  class FixtureSet
+  class Repository
     def initialize(exposed_records)
       @records = exposed_records
       @records.each_value { |value| value.freeze if value.is_a?(Array) }

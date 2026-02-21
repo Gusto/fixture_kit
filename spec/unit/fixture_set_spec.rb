@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe FixtureKit::FixtureSet do
+RSpec.describe FixtureKit::Repository do
   describe "#initialize" do
     it "freezes array values" do
       records = { users: [1, 2, 3], admin: "single" }

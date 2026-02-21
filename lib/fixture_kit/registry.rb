@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module FixtureKit
-  module FixtureRegistry
+  module Registry
     class << self
       def fetch(name)
         fixture = find(name)

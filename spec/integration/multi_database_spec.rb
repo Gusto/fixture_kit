@@ -181,18 +181,18 @@ RSpec.describe "Multi-database integration" do
     it "caches parsed JSON in memory (first load populates cache)" do
       # Clear both memory and disk cache
       clear_fixture_cache("project_management")
-      expect(FixtureKit::FixtureCache.memory_cache.key?("project_management")).to be(false)
+      expect(FixtureKit::Cache.memory_cache.key?("project_management")).to be(false)
 
       # First load - should populate memory cache
       load_fixture("project_management")
 
-      expect(FixtureKit::FixtureCache.memory_cache.key?("project_management")).to be(true)
+      expect(FixtureKit::Cache.memory_cache.key?("project_management")).to be(true)
       expect(User.count).to eq(3)
     end
 
     it "uses memory cache on subsequent loads (second load uses memory)" do
       # Memory cache should exist from previous test
-      expect(FixtureKit::FixtureCache.memory_cache.key?("project_management")).to be(true)
+      expect(FixtureKit::Cache.memory_cache.key?("project_management")).to be(true)
 
       # Delete disk cache to prove memory cache is used
       cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
@@ -208,11 +208,11 @@ RSpec.describe "Multi-database integration" do
 
     it "clear_cache removes from memory" do
       # Ensure memory cache has entry
-      FixtureKit::FixtureCache.memory_cache["test_memory"] = { "records" => {} }
+      FixtureKit::Cache.memory_cache["test_memory"] = { "records" => {} }
 
       clear_fixture_cache("test_memory")
 
-      expect(FixtureKit::FixtureCache.memory_cache.key?("test_memory")).to be(false)
+      expect(FixtureKit::Cache.memory_cache.key?("test_memory")).to be(false)
     end
   end
 
