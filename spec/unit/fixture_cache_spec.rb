@@ -202,11 +202,6 @@ RSpec.describe FixtureKit::FixtureCache do
       expect(described_class.memory_cache).to be_empty
     end
 
-    it "handles symbol fixture names" do
-      described_class.clear_memory_cache(:fixture_a)
-
-      expect(described_class.memory_cache.key?("fixture_a")).to be(false)
-    end
   end
 
   describe ".clear" do
@@ -244,7 +239,7 @@ RSpec.describe FixtureKit::FixtureCache do
     end
   end
 
-  describe ".pregenerate_all" do
+  describe ".generate_all" do
     before do
       described_class.clear
     end
@@ -256,7 +251,7 @@ RSpec.describe FixtureKit::FixtureCache do
       expect(File.exist?(project_cache)).to be(false)
       expect(File.exist?(teams_cache)).to be(false)
 
-      described_class.pregenerate_all
+      described_class.generate_all
 
       expect(File.exist?(project_cache)).to be(true)
       expect(File.exist?(teams_cache)).to be(true)
@@ -268,7 +263,7 @@ RSpec.describe FixtureKit::FixtureCache do
       expect(ActivityLog.count).to eq(0)
       expect(TimeEntry.count).to eq(0)
 
-      described_class.pregenerate_all
+      described_class.generate_all
 
       # Database should still be empty (transactions rolled back)
       expect(User.count).to eq(0)
@@ -282,7 +277,7 @@ RSpec.describe FixtureKit::FixtureCache do
 
     it "regenerates caches even if they already exist" do
       # Generate cache
-      described_class.pregenerate_all
+      described_class.generate_all
 
       project_cache = File.join(cache_path, "project_management.json")
 
@@ -290,12 +285,42 @@ RSpec.describe FixtureKit::FixtureCache do
       File.write(project_cache, '{"records": {}, "exposed": {}}')
 
       # Pregenerate again - should overwrite with valid content
-      described_class.pregenerate_all
+      described_class.generate_all
 
       # Cache should have actual records now
       cache_data = JSON.parse(File.read(project_cache))
       expect(cache_data["records"]).to have_key("User")
       expect(cache_data["exposed"]).to have_key("alice")
+    end
+  end
+
+  describe ".generate" do
+    before do
+      described_class.clear
+    end
+
+    it "uses the configured generator lifecycle" do
+      generator = class_double("CustomGenerator")
+      previous_generator = FixtureKit.configuration.generator
+      FixtureKit.configuration.generator = generator
+
+      expect(generator).to receive(:run).and_yield
+      expect(described_class).to receive(:clear).with("project_management")
+      expect(FixtureKit::FixtureRunner).to receive(:run).with("project_management", force: true)
+
+      described_class.generate("project_management")
+    ensure
+      FixtureKit.configuration.generator = previous_generator
+    end
+
+    it "can generate cache for a selected fixture only" do
+      project_cache = File.join(cache_path, "project_management.json")
+      teams_cache = File.join(cache_path, "teams/basic.json")
+
+      described_class.generate("project_management")
+
+      expect(File.exist?(project_cache)).to be(true)
+      expect(File.exist?(teams_cache)).to be(false)
     end
   end
 end

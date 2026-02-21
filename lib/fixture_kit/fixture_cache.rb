@@ -15,7 +15,7 @@ module FixtureKit
 
       def clear_memory_cache(fixture_name = nil)
         if fixture_name
-          @memory_cache.delete(fixture_name.to_s)
+          @memory_cache.delete(fixture_name)
         else
           @memory_cache.clear
         end
@@ -34,18 +34,18 @@ module FixtureKit
         end
       end
 
-      # Pre-generate caches for all fixtures.
+      # Generate caches for all fixtures.
       # Each fixture is generated in a transaction that rolls back, so no data persists.
-      def pregenerate_all
-        fixture_path = FixtureKit.configuration.fixture_path
+      def generate_all
+        FixtureRegistry.load_definitions
+        FixtureRegistry.fixtures.each { |fixture| generate(fixture.name) }
+      end
 
-        # First, load all fixture files to register them
-        FixtureRegistry.load_definitions(fixture_path)
+      def generate(fixture_name)
+        clear(fixture_name)
 
-        # Then iterate over the registry and generate caches
-        FixtureRegistry.all_names.each do |name|
-          runner = FixtureRunner.new(name)
-          runner.generate_cache_only
+        FixtureKit.configuration.generator.run do
+          FixtureRunner.run(fixture_name, force: true)
         end
       end
     end
@@ -53,7 +53,7 @@ module FixtureKit
     attr_reader :records, :exposed
 
     def initialize(fixture_name)
-      @fixture_name = fixture_name.to_s
+      @fixture_name = fixture_name
       @records = {}
       @exposed = {}
     end

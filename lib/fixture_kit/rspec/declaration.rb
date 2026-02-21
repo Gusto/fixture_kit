@@ -6,11 +6,11 @@ module FixtureKit
       attr_reader :name
 
       def initialize(name)
-        @name = name.to_s
+        @name = name
       end
 
       def fixture_set
-        FixtureKit::FixtureRegistry.load_fixture(name)
+        FixtureKit::FixtureRunner.run(name)
       end
     end
   end
