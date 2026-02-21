@@ -202,11 +202,6 @@ RSpec.describe FixtureKit::FixtureCache do
       expect(described_class.memory_cache).to be_empty
     end
 
-    it "handles symbol fixture names" do
-      described_class.clear_memory_cache(:fixture_a)
-
-      expect(described_class.memory_cache.key?("fixture_a")).to be(false)
-    end
   end
 
   describe ".clear" do

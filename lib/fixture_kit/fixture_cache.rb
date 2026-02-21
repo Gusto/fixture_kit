@@ -15,7 +15,7 @@ module FixtureKit
 
       def clear_memory_cache(fixture_name = nil)
         if fixture_name
-          @memory_cache.delete(fixture_name.to_s)
+          @memory_cache.delete(fixture_name)
         else
           @memory_cache.clear
         end
@@ -53,7 +53,7 @@ module FixtureKit
     attr_reader :records, :exposed
 
     def initialize(fixture_name)
-      @fixture_name = fixture_name.to_s
+      @fixture_name = fixture_name
       @records = {}
       @exposed = {}
     end

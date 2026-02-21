@@ -6,7 +6,7 @@ module FixtureKit
       attr_reader :name
 
       def initialize(name)
-        @name = name.to_s
+        @name = name
       end
 
       def fixture_set

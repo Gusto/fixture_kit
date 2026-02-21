@@ -9,7 +9,7 @@ module FixtureKit
     end
 
     def initialize(fixture_name)
-      @fixture_name = fixture_name.to_sym
+      @fixture_name = fixture_name
       @cache = FixtureCache.new(@fixture_name)
     end
 

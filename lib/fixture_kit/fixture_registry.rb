@@ -18,7 +18,7 @@ module FixtureKit
       end
 
       def find(name)
-        registry[name.to_s]
+        registry[name]
       end
 
       def fixtures
@@ -26,7 +26,7 @@ module FixtureKit
       end
 
       def register(fixture)
-        registry[fixture.name.to_s] = fixture
+        registry[fixture.name] = fixture
       end
 
       # Load all fixture definition files.
