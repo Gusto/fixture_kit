@@ -4,32 +4,52 @@ require "open3"
 
 RSpec.describe "Dummy app integration" do
   DUMMY_ROOT = File.expand_path("../dummy", __dir__)
-  DUMMY_SPEC_PATH = "spec/integration/fixture_kit_integration.rb"
+  DUMMY_RSPEC_PATH = "spec/integration/fixture_kit_integration.rb"
+  DUMMY_MINITEST_PATH = "test/integration/fixture_kit_integration_test.rb"
   INTEGRATION_FRAMEWORK = ENV.fetch("FIXTURE_KIT_INTEGRATION_FRAMEWORK", "rspec")
 
-  def run_dummy_specs
+  def run_dummy_tests
+    command =
+      case INTEGRATION_FRAMEWORK
+      when "rspec"
+        [
+          "bundle",
+          "exec",
+          "bin/rspec",
+          "--no-color",
+          "--format",
+          "documentation",
+          DUMMY_RSPEC_PATH
+        ]
+      when "minitest"
+        [
+          "bundle",
+          "exec",
+          "bin/rails",
+          "test",
+          DUMMY_MINITEST_PATH,
+          "-v"
+        ]
+      else
+        raise ArgumentError, "Unsupported integration framework: #{INTEGRATION_FRAMEWORK}"
+      end
+
     Open3.capture3(
       {
         "RAILS_ENV" => "test",
         "FIXTURE_KIT_INTEGRATION_FRAMEWORK" => INTEGRATION_FRAMEWORK
       },
-      "bundle",
-      "exec",
-      "bin/rspec",
-      "--no-color",
-      "--format",
-      "documentation",
-      DUMMY_SPEC_PATH,
+      *command,
       chdir: DUMMY_ROOT
     )
   end
 
   it "runs fixture_kit behavior in a standalone dummy app" do
-    stdout, stderr, status = run_dummy_specs
+    stdout, stderr, status = run_dummy_tests
     output = [stdout, stderr].join("\n")
 
     expect(status.success?).to be(true), <<~MESSAGE
-      Expected dummy app RSpec run to pass.
+      Expected dummy app integration run to pass.
       Command output:
       #{output}
     MESSAGE

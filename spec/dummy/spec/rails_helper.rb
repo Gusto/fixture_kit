@@ -5,17 +5,7 @@ ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "fileutils"
 require "rspec/rails"
-
-INTEGRATION_FRAMEWORK = ENV.fetch("FIXTURE_KIT_INTEGRATION_FRAMEWORK", "rspec")
-
-case INTEGRATION_FRAMEWORK
-when "rspec"
-  require "fixture_kit/rspec"
-when "minitest"
-  require "fixture_kit"
-else
-  raise ArgumentError, "Unsupported integration framework: #{INTEGRATION_FRAMEWORK}"
-end
+require "fixture_kit/rspec"
 
 if Rails.env.production?
   abort("The Rails environment is running in production mode!")
@@ -95,8 +85,7 @@ def setup_databases
 end
 
 FixtureKit.configure do |config|
-  config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
-  config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
+  config.fixture_path = Rails.root.join("fixture_kit").to_s
 end
 
 RSpec.configure do |config|
@@ -105,10 +94,6 @@ RSpec.configure do |config|
   config.prepend_before(:suite) do
     setup_databases
     clear_fixture_cache
-
-    if INTEGRATION_FRAMEWORK == "minitest"
-      FixtureKit.runner.start
-    end
   end
 
   config.after(:suite) do

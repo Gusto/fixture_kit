@@ -5,7 +5,7 @@ require "spec_helper"
 RSpec.describe FixtureKit::Registry do
   let(:configuration) do
     FixtureKit::Configuration.new.tap do |config|
-      config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
+      config.fixture_path = Rails.root.join("fixture_kit").to_s
     end
   end
   let(:runner) { instance_double(FixtureKit::Runner, configuration: configuration) }

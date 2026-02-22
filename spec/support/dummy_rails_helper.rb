@@ -99,7 +99,7 @@ end
 
 # Configure FixtureKit
 FixtureKit.configure do |config|
-  config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
+  config.fixture_path = Rails.root.join("fixture_kit").to_s
   config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
   config.isolator = FixtureKit::RSpec::Isolator if defined?(FixtureKit::RSpec::Isolator)
 end

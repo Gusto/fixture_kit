@@ -2,32 +2,9 @@
 
 require "rails_helper"
 
-module FixtureDeclaration
-  def fixture_declaration(name)
-    if INTEGRATION_FRAMEWORK == "rspec"
-      fixture(name)
-      return
-    end
-
-    declared_fixture = FixtureKit.runner.register(name)
-
-    let(:fixture) do
-      @_fixture_kit_fixture_set || raise("No fixture declared for this example group.")
-    end
-
-    prepend_before(:example) do
-      @_fixture_kit_fixture_set = declared_fixture.mount
-    end
-  end
-end
-
-RSpec.configure do |config|
-  config.extend FixtureDeclaration
-end
-
 RSpec.describe "FixtureKit integration" do
   describe "fixture preload timing" do
-    fixture_declaration "teams/basic"
+    fixture "teams/basic"
 
     before do
       @user_count_in_before_hook = User.count
@@ -35,13 +12,13 @@ RSpec.describe "FixtureKit integration" do
 
     it "loads fixture data before before hooks run" do
       expect(@user_count_in_before_hook).to eq(2)
-      puts "FKIT_ASSERT:FRAMEWORK:#{INTEGRATION_FRAMEWORK}"
+      puts "FKIT_ASSERT:FRAMEWORK:rspec"
       puts "FKIT_ASSERT:PRELOAD_BEFORE_HOOK"
     end
   end
 
   describe "fixture loading and exposure" do
-    fixture_declaration "project_management"
+    fixture "project_management"
 
     it "loads records into both databases" do
       expect(User.count).to eq(3)
@@ -70,7 +47,7 @@ RSpec.describe "FixtureKit integration" do
   end
 
   describe "cache generation" do
-    fixture_declaration "project_management"
+    fixture "project_management"
 
     it "has pregenerated cache before example execution" do
       cache_file = File.join(FixtureKit.runner.configuration.cache_path, "project_management.json")
@@ -80,7 +57,7 @@ RSpec.describe "FixtureKit integration" do
   end
 
   describe "nested fixture paths" do
-    fixture_declaration "teams/basic"
+    fixture "teams/basic"
 
     it "loads nested fixture definitions" do
       expect(fixture.alice.name).to eq("Alice")
@@ -90,7 +67,7 @@ RSpec.describe "FixtureKit integration" do
   end
 
   describe "transaction rollback" do
-    fixture_declaration "project_management"
+    fixture "project_management"
 
     it "creates a temporary row in first example" do
       expect(User.count).to eq(3)
