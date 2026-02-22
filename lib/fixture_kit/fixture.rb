@@ -15,7 +15,7 @@ module FixtureKit
       return if already_cached && !force
 
       @cache.save
-      FixtureKit.configuration.on_cache&.call(name) unless already_cached
+      FixtureKit.runner.configuration.on_cache&.call(name) unless already_cached
     end
 
     def mount

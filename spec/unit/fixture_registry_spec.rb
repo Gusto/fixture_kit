@@ -5,13 +5,18 @@ require "spec_helper"
 RSpec.describe FixtureKit::Registry do
   let(:configuration) do
     FixtureKit::Configuration.new.tap do |config|
-      config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
+      config.fixture_path = Rails.root.join("fixture_kit").to_s
     end
+  end
+  let(:runner) { instance_double(FixtureKit::Runner, configuration: configuration) }
+
+  before do
+    allow(FixtureKit).to receive(:runner).and_return(runner)
   end
 
   describe "#add" do
     it "loads and returns a fixture by name" do
-      registry = described_class.new(configuration)
+      registry = described_class.new
 
       fixture = registry.add("project_management")
 
@@ -20,7 +25,7 @@ RSpec.describe FixtureKit::Registry do
     end
 
     it "returns the already-loaded fixture when added again" do
-      registry = described_class.new(configuration)
+      registry = described_class.new
 
       first = registry.add("project_management")
       second = registry.add("project_management")
@@ -29,7 +34,7 @@ RSpec.describe FixtureKit::Registry do
     end
 
     it "raises a custom error when the fixture file does not exist" do
-      registry = described_class.new(configuration)
+      registry = described_class.new
 
       expect do
         registry.add("does/not_exist")

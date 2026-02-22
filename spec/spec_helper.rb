@@ -33,21 +33,6 @@ RSpec.configure do |config|
   # Use transactional fixtures - each test runs in a transaction that rolls back
   config.use_transactional_fixtures = true
 
-  # Keep fixture_kit configuration isolated per example.
-  config.around(:each) do |example|
-    previous_cache_path = FixtureKit.configuration.cache_path
-    previous_fixture_path = FixtureKit.configuration.fixture_path
-    previous_isolator = FixtureKit.configuration.isolator
-    previous_on_cache = FixtureKit.configuration.on_cache
-
-    example.run
-  ensure
-    FixtureKit.configuration.cache_path = previous_cache_path
-    FixtureKit.configuration.fixture_path = previous_fixture_path
-    FixtureKit.configuration.isolator = previous_isolator
-    FixtureKit.configuration.on_cache = previous_on_cache
-  end
-
   # Clean up cache after suite
   config.after(:suite) do
     clear_fixture_cache

@@ -2,6 +2,7 @@
 /.bundle/
 /vendor/bundle/
 Gemfile.lock
+!spec/dummy/Gemfile.lock
 
 # Build artifacts
 /pkg/

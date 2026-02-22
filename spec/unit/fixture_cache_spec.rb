@@ -8,6 +8,14 @@ RSpec.describe FixtureKit::Cache do
   let(:fixture) { instance_double(FixtureKit::Fixture, name: fixture_name) }
   let(:definition) { instance_double(FixtureKit::Definition, evaluate: nil, exposed: {}) }
   let(:cache) { described_class.new(fixture, definition) }
+  let(:configuration) do
+    FixtureKit::Configuration.new.tap do |config|
+      config.cache_path = cache_path
+      config.fixture_path = Rails.root.join("fixture_kit").to_s
+      config.isolator = pass_through_isolator
+    end
+  end
+  let(:runner) { instance_double(FixtureKit::Runner, configuration: configuration) }
 
   let(:pass_through_isolator) do
     Class.new do
@@ -18,18 +26,12 @@ RSpec.describe FixtureKit::Cache do
   end
 
   before do
-    FixtureKit.reset
-    FixtureKit.configure do |config|
-      config.cache_path = cache_path
-      config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
-      config.isolator = pass_through_isolator
-    end
+    allow(FixtureKit).to receive(:runner).and_return(runner)
     FileUtils.rm_rf(cache_path)
   end
 
   after do
     FileUtils.rm_rf(cache_path)
-    FixtureKit.reset
   end
 
   describe "#path" do

@@ -1,31 +1,20 @@
 # frozen_string_literal: true
 
-# Boot the dummy Rails app for tests.
+ENV["RAILS_ENV"] ||= "test"
+
+require_relative "../config/environment"
 require "fileutils"
+require "rspec/rails"
+require "fixture_kit/rspec"
 
-ENV["RAILS_ENV"] = "test"
-
-require_relative "../dummy/config/environment"
-
-require "fixture_kit"
-
-# Helper to load fixtures in tests (wraps internal API)
-def load_fixture(name)
-  FixtureKit.runner.register(name).mount
+if Rails.env.production?
+  abort("The Rails environment is running in production mode!")
 end
 
-# Helper to clear fixture cache in tests
-def clear_fixture_cache(fixture_name = nil)
-  cache_path = FixtureKit.runner.configuration.cache_path
-
-  if fixture_name
-    FileUtils.rm_f(File.join(cache_path, "#{fixture_name}.json"))
-  else
-    FileUtils.rm_rf(cache_path)
-  end
+def clear_fixture_cache
+  FileUtils.rm_rf(FixtureKit.runner.configuration.cache_path)
 end
 
-# Create schema for both databases
 def setup_databases
   ActiveRecord::Base.connection.disable_referential_integrity do
     ActiveRecord::Base.connection.drop_table(:comments, if_exists: true)
@@ -39,7 +28,6 @@ def setup_databases
     AnalyticsRecord.connection.drop_table(:time_entries, if_exists: true)
   end
 
-  # Primary database schema
   ActiveRecord::Base.connection.create_table :users, force: true do |t|
     t.string :name, null: false
     t.string :email, null: false
@@ -72,7 +60,6 @@ def setup_databases
     t.timestamps
   end
 
-  # Analytics database schema
   AnalyticsRecord.connection.create_table :activity_logs, force: true do |t|
     t.integer :external_user_id, null: false
     t.string :action, null: false
@@ -97,9 +84,19 @@ def setup_databases
   AnalyticsRecord.connection.add_index :time_entries, :external_task_id
 end
 
-# Configure FixtureKit
 FixtureKit.configure do |config|
   config.fixture_path = Rails.root.join("fixture_kit").to_s
-  config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
-  config.isolator = FixtureKit::RSpec::Isolator if defined?(FixtureKit::RSpec::Isolator)
+end
+
+RSpec.configure do |config|
+  config.use_transactional_fixtures = true
+
+  config.prepend_before(:suite) do
+    setup_databases
+    clear_fixture_cache
+  end
+
+  config.after(:suite) do
+    clear_fixture_cache
+  end
 end

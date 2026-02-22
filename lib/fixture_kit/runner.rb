@@ -10,7 +10,7 @@ module FixtureKit
 
     def initialize
       @configuration = Configuration.new
-      @registry = Registry.new(configuration)
+      @registry = Registry.new
       @started = false
     end
 

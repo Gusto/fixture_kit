@@ -10,18 +10,18 @@ module FixtureKit
   class ExposedRecordNotFound < Error; end
   class RunnerAlreadyStartedError < Error; end
 
-  autoload :VERSION,         File.expand_path("fixture_kit/version", __dir__)
-  autoload :Configuration,   File.expand_path("fixture_kit/configuration", __dir__)
-  autoload :Singleton,       File.expand_path("fixture_kit/singleton", __dir__)
-  autoload :Fixture,         File.expand_path("fixture_kit/fixture", __dir__)
-  autoload :Definition,      File.expand_path("fixture_kit/definition", __dir__)
-  autoload :Registry,        File.expand_path("fixture_kit/registry", __dir__)
-  autoload :Repository,      File.expand_path("fixture_kit/repository", __dir__)
-  autoload :SqlSubscriber,   File.expand_path("fixture_kit/sql_subscriber", __dir__)
-  autoload :Cache,           File.expand_path("fixture_kit/cache", __dir__)
-  autoload :Runner,          File.expand_path("fixture_kit/runner", __dir__)
-  autoload :Isolator,       File.expand_path("fixture_kit/isolator", __dir__)
-  autoload :TestCase,        File.expand_path("fixture_kit/test_case", __dir__)
+  autoload :VERSION,       File.expand_path("fixture_kit/version", __dir__)
+  autoload :Configuration, File.expand_path("fixture_kit/configuration", __dir__)
+  autoload :Singleton,     File.expand_path("fixture_kit/singleton", __dir__)
+  autoload :Fixture,       File.expand_path("fixture_kit/fixture", __dir__)
+  autoload :Definition,    File.expand_path("fixture_kit/definition", __dir__)
+  autoload :Registry,      File.expand_path("fixture_kit/registry", __dir__)
+  autoload :Repository,    File.expand_path("fixture_kit/repository", __dir__)
+  autoload :SqlSubscriber, File.expand_path("fixture_kit/sql_subscriber", __dir__)
+  autoload :Cache,         File.expand_path("fixture_kit/cache", __dir__)
+  autoload :Runner,        File.expand_path("fixture_kit/runner", __dir__)
+  autoload :Isolator,      File.expand_path("fixture_kit/isolator", __dir__)
+  autoload :Minitest,      File.expand_path("fixture_kit/minitest", __dir__)
 
   extend Singleton
 end
