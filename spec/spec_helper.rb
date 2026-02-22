@@ -25,8 +25,8 @@ RSpec.configure do |config|
   # Include the FixtureKit RSpec DSL
   config.include FixtureKit::RSpec
 
-  # Create database schema once at suite start
-  config.before(:suite) do
+  # Create database schema once at suite start before FixtureKit startup hooks.
+  config.prepend_before(:suite) do
     setup_databases
   end
 
@@ -37,15 +37,15 @@ RSpec.configure do |config|
   config.around(:each) do |example|
     previous_cache_path = FixtureKit.configuration.cache_path
     previous_fixture_path = FixtureKit.configuration.fixture_path
-    previous_autogenerate = FixtureKit.configuration.autogenerate
-    previous_generator = FixtureKit.configuration.generator
+    previous_isolator = FixtureKit.configuration.isolator
+    previous_on_cache = FixtureKit.configuration.on_cache
 
     example.run
   ensure
     FixtureKit.configuration.cache_path = previous_cache_path
     FixtureKit.configuration.fixture_path = previous_fixture_path
-    FixtureKit.configuration.autogenerate = previous_autogenerate
-    FixtureKit.configuration.generator = previous_generator
+    FixtureKit.configuration.isolator = previous_isolator
+    FixtureKit.configuration.on_cache = previous_on_cache
   end
 
   # Clean up cache after suite

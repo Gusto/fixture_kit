@@ -114,24 +114,16 @@ RSpec.describe "Multi-database integration" do
   end
 
   describe "caching" do
-    it "creates cache file on first run" do
+    it "loads fixture data on first run after clearing cache file" do
       clear_fixture_cache("project_management")
 
       cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
       expect(File.exist?(cache_file)).to be(false)
 
-      # Load fixture (creates cache)
-      load_fixture("project_management")
+      fixture_set = load_fixture("project_management")
 
-      expect(File.exist?(cache_file)).to be(true)
-
-      # Verify cache content structure
-      cache_data = JSON.parse(File.read(cache_file))
-      expect(cache_data["records"]).to be_a(Hash)
-      expect(cache_data["records"].keys).to include("User")
-      expect(cache_data["records"]["User"]).to be_a(String)
-      expect(cache_data["records"]["User"]).to match(/INSERT OR IGNORE INTO/i)
-      expect(cache_data["exposed"]).to be_a(Hash)
+      expect(User.count).to eq(3)
+      expect(fixture_set.alice).to be_a(User)
     end
 
     it "uses cache when loading in a new transaction (first test creates cache)" do
@@ -142,10 +134,6 @@ RSpec.describe "Multi-database integration" do
     end
 
     it "uses cache when loading in a new transaction (second test uses cache)" do
-      # Cache should exist from previous test
-      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
-      expect(File.exist?(cache_file)).to be(true)
-
       # Load fixture - should use cache (replay INSERTs)
       fixture_set = load_fixture("project_management")
 
@@ -165,54 +153,30 @@ RSpec.describe "Multi-database integration" do
       expect(fixture.bob.name).to eq("Bob")
     end
 
-    it "creates cache in nested directory" do
+    it "loads nested fixture after clearing its cache file" do
       clear_fixture_cache("teams/basic")
 
       cache_file = File.join(FixtureKit.configuration.cache_path, "teams/basic.json")
       expect(File.exist?(cache_file)).to be(false)
 
-      load_fixture("teams/basic")
+      fixture_set = load_fixture("teams/basic")
 
-      expect(File.exist?(cache_file)).to be(true)
+      expect(fixture_set.alice.name).to eq("Alice")
+      expect(fixture_set.bob.name).to eq("Bob")
     end
   end
 
-  describe "memory caching" do
-    it "caches parsed JSON in memory (first load populates cache)" do
-      # Clear both memory and disk cache
-      clear_fixture_cache("project_management")
-      expect(FixtureKit::Cache.memory_cache.key?("project_management")).to be(false)
-
-      # First load - should populate memory cache
+  describe "cache invalidation" do
+    it "clear_fixture_cache removes cache file and fixture still loads" do
       load_fixture("project_management")
 
-      expect(FixtureKit::Cache.memory_cache.key?("project_management")).to be(true)
-      expect(User.count).to eq(3)
-    end
-
-    it "uses memory cache on subsequent loads (second load uses memory)" do
-      # Memory cache should exist from previous test
-      expect(FixtureKit::Cache.memory_cache.key?("project_management")).to be(true)
-
-      # Delete disk cache to prove memory cache is used
       cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
-      FileUtils.rm_f(cache_file)
+
+      clear_fixture_cache("project_management")
+
       expect(File.exist?(cache_file)).to be(false)
-
-      # Load should still work using memory cache
-      fixture_set = load_fixture("project_management")
-
+      expect { load_fixture("project_management") }.not_to raise_error
       expect(User.count).to eq(3)
-      expect(fixture_set.alice).to be_a(User)
-    end
-
-    it "clear_cache removes from memory" do
-      # Ensure memory cache has entry
-      FixtureKit::Cache.memory_cache["test_memory"] = { "records" => {} }
-
-      clear_fixture_cache("test_memory")
-
-      expect(FixtureKit::Cache.memory_cache.key?("test_memory")).to be(false)
     end
   end
 

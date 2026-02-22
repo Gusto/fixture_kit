@@ -3,15 +3,26 @@
 require "spec_helper"
 
 RSpec.describe FixtureKit::Singleton do
-  describe ".reset" do
-    before do
-      FixtureKit::Cache.memory_cache["test_fixture"] = { "records" => {} }
-    end
+  describe ".configure" do
+    it "yields the runner configuration" do
+      yielded = nil
 
-    it "clears memory cache" do
+      FixtureKit.configure do |config|
+        yielded = config
+      end
+
+      expect(yielded).to equal(FixtureKit.runner.configuration)
+    end
+  end
+
+  describe ".reset" do
+    it "resets runner" do
+      FixtureKit.runner
+      previous_runner = FixtureKit.runner
+
       FixtureKit.reset
 
-      expect(FixtureKit::Cache.memory_cache).to be_empty
+      expect(FixtureKit.runner).not_to equal(previous_runner)
     end
   end
 

@@ -2,6 +2,6 @@
 
 module FixtureKit
   module TestCase
-    autoload :Generator, File.expand_path("test_case/generator", __dir__)
+    autoload :Isolator, File.expand_path("test_case/isolator", __dir__)
   end
 end

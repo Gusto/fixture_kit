@@ -5,7 +5,7 @@ require "active_record/fixtures"
 
 module FixtureKit
   module TestCase
-    class Generator < FixtureKit::Generator
+    class Isolator < FixtureKit::Isolator
       TEST_METHOD_NAME = "test_fixture_kit_cache_pregeneration"
 
       def run(&block)

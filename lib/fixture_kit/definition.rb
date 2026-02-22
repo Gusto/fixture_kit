@@ -1,23 +1,22 @@
 # frozen_string_literal: true
 
 module FixtureKit
-  class DefinitionContext
+  class Definition
     attr_reader :exposed
 
-    def initialize
+    def initialize(&definition)
+      @definition = definition
       @exposed = {}
+    end
+
+    def evaluate
+      instance_eval(&@definition)
     end
 
     def expose(**records)
       records.each do |name, record|
-        name = name.to_sym
-
         if @exposed.key?(name)
-          raise FixtureKit::DuplicateNameError, <<~ERROR
-            Duplicate expose name :#{name}
-
-            A record with this name has already been exposed in this fixture.
-          ERROR
+          raise FixtureKit::DuplicateNameError, "Name #{name} already exposed"
         end
 
         @exposed[name] = record

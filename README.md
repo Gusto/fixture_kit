@@ -8,7 +8,7 @@ Test data setup is slow. Every `Model.create!` or `FactoryBot.create` hits the d
 
 ## The Solution
 
-FixtureKit caches database records as raw SQL INSERT statements. On first use, it executes your fixture definition, captures the resulting database state, and generates optimized batch INSERT statements. Subsequent loads replay these statements directly—no ORM overhead, no callbacks, just fast SQL.
+FixtureKit caches database records as raw SQL INSERT statements. It executes your fixture definition once, captures the resulting database state, and generates optimized batch INSERT statements. Fixture loads then replay these statements directly: no ORM overhead, no callbacks, just fast SQL.
 
 Combined with RSpec's transactional fixtures, each test runs in a transaction that rolls back—so cached data can be reused across tests without cleanup.
 
@@ -26,7 +26,7 @@ end
 
 ### 1. Define a Fixture
 
-Create fixture files in `spec/fixture_kit/`. Use whatever method you prefer to create records—FixtureKit doesn't care.
+Create fixture files in `spec/fixture_kit/` (or `test/fixture_kit/` for test-unit/minitest-style setups). Use whatever method you prefer to create records.
 
 **Using ActiveRecord directly:**
 
@@ -117,6 +117,8 @@ RSpec.configure do |config|
 end
 ```
 
+When you call `fixture "name"` in an example group, FixtureKit registers that fixture with its runner.
+
 ## Configuration
 
 ```ruby
@@ -128,27 +130,35 @@ FixtureKit.configure do |config|
   # Where cache files are stored (default: tmp/cache/fixture_kit)
   config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
 
-  # Whether to regenerate caches on every run (default: true)
-  config.autogenerate = true
+  # Wrapper used to isolate generation work (default: FixtureKit::TestCase::Isolator)
+  # config.isolator = FixtureKit::TestCase::Isolator
+  # config.isolator = FixtureKit::RSpec::Isolator
 
-  # Optional: customize how pregeneration is wrapped.
-  # Default is FixtureKit::TestCase::Generator.
-  # config.generator = FixtureKit::TestCase::Generator
+  # Optional callback, called once when a fixture cache is first generated.
+  # Receives the fixture name as a String.
+  # config.on_cache = ->(fixture_name) { puts "cached #{fixture_name}" }
 end
 ```
 
-Custom generators should subclass `FixtureKit::Generator` and implement `#run`.
-`#run` receives the pregeneration block and should execute it in whatever lifecycle you need.
+Custom isolators should subclass `FixtureKit::Isolator` and implement `#run`.
+`#run` receives the generation block and should execute it in whatever lifecycle you need.
 
-### Autogenerate
+By default, FixtureKit uses `FixtureKit::TestCase::Isolator`, which runs generation inside an internal `ActiveSupport::TestCase` and removes that harness case from minitest runnables.
 
-When `autogenerate` is `true` (the default), FixtureKit clears all caches at the start of each test run, then regenerates them on first use. Subsequent tests that use the same fixture reuse the cache from earlier in the run. This ensures your test data always matches your fixture definitions.
+When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpec::Isolator`. It runs generation inside an internal RSpec example, and uses a null reporter so harness runs do not count toward suite example totals.
 
-When `autogenerate` is `false`, FixtureKit pre-generates all fixture caches at suite start. This runs through the configured `generator`, and still rolls back database changes.
+## Lifecycle
 
-By default, FixtureKit uses `FixtureKit::TestCase::Generator`, which runs pregeneration inside an internal `ActiveSupport::TestCase` so setup/teardown hooks and transactional fixture behavior run as expected. The internal test case is removed from Minitest runnables, so it does not count toward suite totals.
+Fixture generation is managed by `FixtureKit::Runner`.
 
-When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpec::Generator` as the generator. This runs pregeneration inside an internal RSpec example so your normal `before`/`around`/`after` hooks apply. The internal example uses a null reporter, so it does not count toward suite example totals.
+With `fixture_kit/rspec`:
+
+1. `fixture "name"` registers the fixture with the runner during spec file load.
+2. In `before(:suite)`, runner `start`:
+   - clears `cache_path` (unless preserve-cache is enabled),
+   - generates caches for all already-registered fixtures.
+3. If new spec files are loaded later (for example, queue-mode CI runners), newly registered fixtures are generated immediately because the runner has already started.
+4. At example runtime, fixture mounting loads from cache.
 
 ### Preserving Cache Locally
 
@@ -158,19 +168,9 @@ If you want to skip cache clearing at suite start (e.g., to reuse caches across 
 FIXTURE_KIT_PRESERVE_CACHE=1 bundle exec rspec
 ```
 
+Truthy values are case-insensitive: `1`, `true`, `yes`.
+
 This is useful when you're iterating on tests and your fixture definitions haven't changed.
-
-### CI Setup
-
-For CI, set `autogenerate` to `false`. FixtureKit will automatically generate any missing caches at suite start:
-
-```ruby
-FixtureKit.configure do |config|
-  config.autogenerate = !ENV["CI"]
-end
-```
-
-This means CI "just works" - no need to pre-generate caches or commit them to the repository. The first test run will generate all caches, and subsequent runs (if caches are preserved between builds) will reuse them.
 
 ## Nested Fixtures
 
@@ -189,11 +189,11 @@ fixture "teams/sales"
 
 ## How It Works
 
-1. **First load (cache miss)**: FixtureKit executes your definition block, subscribes to `sql.active_record` notifications to track which tables received INSERTs, queries all records from those tables, and generates batch INSERT statements with conflict handling (`INSERT OR IGNORE` for SQLite, `ON CONFLICT DO NOTHING` for PostgreSQL, `INSERT IGNORE` for MySQL).
+1. **Cache generation**: FixtureKit executes your definition block inside the configured isolator, subscribes to `sql.active_record` notifications to track inserted models, queries those model tables, and generates batch INSERT statements with conflict handling (`INSERT OR IGNORE` for SQLite, `ON CONFLICT DO NOTHING` for PostgreSQL, `INSERT IGNORE` for MySQL).
 
-2. **Subsequent loads (cache hit)**: FixtureKit loads the cached JSON file and executes the raw SQL INSERT statements directly. No ORM instantiation, no callbacks—just fast SQL execution.
+2. **Mounting**: FixtureKit loads the cached JSON file and executes the raw SQL INSERT statements directly. No ORM instantiation, no callbacks.
 
-3. **In-memory caching**: Once a cache file is parsed, the data is stored in memory. Multiple tests using the same fixture within a single test run don't re-read or re-parse the JSON file.
+3. **Repository build**: FixtureKit resolves exposed records by model + id and returns a `Repository` for method-based access.
 
 4. **Transaction isolation**: RSpec's `use_transactional_fixtures` wraps each test in a transaction that rolls back, so data doesn't persist between tests.
 
@@ -216,7 +216,7 @@ Caches are stored as JSON files in `tmp/cache/fixture_kit/`:
 ```
 
 - **records**: Maps model names to their INSERT statements. Using model names (not table names) allows FixtureKit to use the correct database connection for multi-database setups.
-- **exposed**: Maps fixture accessor names to their model class and ID for querying after cache replay
+- **exposed**: Maps fixture accessor names to their model class and ID for querying after cache replay.
 
 ## Cache Management
 
@@ -225,7 +225,7 @@ Delete the cache directory to force regeneration:
 rm -rf tmp/cache/fixture_kit
 ```
 
-Caches are automatically cleared at suite start when `autogenerate` is enabled, so manual clearing is rarely needed.
+Caches are cleared at runner start unless `FIXTURE_KIT_PRESERVE_CACHE` is truthy.
 
 ## Multi-Database Support
 

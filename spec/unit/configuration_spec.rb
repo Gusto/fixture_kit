@@ -3,17 +3,31 @@
 require "spec_helper"
 
 RSpec.describe FixtureKit::Configuration do
-  describe "#generator" do
-    it "defaults to FixtureKit::TestCase::Generator" do
-      expect(described_class.new.generator).to eq(FixtureKit::TestCase::Generator)
+  describe "#isolator" do
+    it "defaults to FixtureKit::TestCase::Isolator" do
+      expect(described_class.new.isolator).to eq(FixtureKit::TestCase::Isolator)
     end
 
     it "returns an explicitly configured class" do
-      custom_generator_class = Class.new(FixtureKit::Generator)
+      custom_isolator_class = Class.new(FixtureKit::Isolator)
       configuration = described_class.new
-      configuration.generator = custom_generator_class
+      configuration.isolator = custom_isolator_class
 
-      expect(configuration.generator).to eq(custom_generator_class)
+      expect(configuration.isolator).to eq(custom_isolator_class)
+    end
+  end
+
+  describe "#on_cache" do
+    it "defaults to nil" do
+      expect(described_class.new.on_cache).to be_nil
+    end
+
+    it "returns an explicitly configured proc" do
+      callback = proc {}
+      configuration = described_class.new
+      configuration.on_cache = callback
+
+      expect(configuration.on_cache).to eq(callback)
     end
   end
 end

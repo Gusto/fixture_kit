@@ -4,11 +4,9 @@ require "fixture_kit"
 
 module FixtureKit
   module RSpec
-    autoload :Declaration, File.expand_path("rspec/declaration", __dir__)
-    autoload :Generator, File.expand_path("rspec/generator", __dir__)
+    autoload :Isolator, File.expand_path("rspec/isolator", __dir__)
 
     DECLARATION_METADATA_KEY = :fixture_kit_declaration
-    PRESERVE_CACHE_ENV_KEY = "FIXTURE_KIT_PRESERVE_CACHE"
 
     # Class methods (extended via config.extend)
     module ClassMethods
@@ -32,7 +30,7 @@ module FixtureKit
       #     end
       #   end
       def fixture(name)
-        metadata[DECLARATION_METADATA_KEY] = Declaration.new(name)
+        metadata[DECLARATION_METADATA_KEY] = ::RSpec.configuration.fixture_kit.register(name)
       end
     end
 
@@ -46,40 +44,21 @@ module FixtureKit
     end
 
     def self.configure!(config)
-      FixtureKit.configuration.generator = Generator
+      config.add_setting(:fixture_kit, default: FixtureKit.runner)
+      FixtureKit.configuration.isolator = Isolator
+
       config.extend ClassMethods
-      config.include InstanceMethods
+      config.include InstanceMethods, DECLARATION_METADATA_KEY
 
       # Load declared fixtures at the beginning of each example.
       # Runs inside transactional fixtures and before user-defined before hooks.
       config.prepend_before(:example, DECLARATION_METADATA_KEY) do |example|
-        declaration = example.metadata[DECLARATION_METADATA_KEY]
-        @_fixture_kit_fixture_set = declaration.fixture_set
+        @_fixture_kit_fixture_set = example.metadata[DECLARATION_METADATA_KEY].mount
       end
 
-      # Setup caches at suite start only when at least one fixture-backed
-      # example exists in the loaded suite.
-      config.when_first_matching_example_defined(DECLARATION_METADATA_KEY) do
-        config.before(:suite) do
-          if FixtureKit.configuration.autogenerate
-            preserve_cache = ENV[PRESERVE_CACHE_ENV_KEY].to_s.match?(/\A(1|true|yes)\z/i)
-            Cache.clear unless preserve_cache
-          else
-            fixture_names_for_loaded_examples.each do |fixture_name|
-              Cache.generate(fixture_name)
-            end
-          end
-        end
+      config.append_before(:suite) do
+        config.fixture_kit.start
       end
-    end
-
-    def self.fixture_names_for_loaded_examples
-      ::RSpec.world.filtered_examples.each_value.with_object(Set.new) do |examples, names|
-        examples.each do |example|
-          declaration = example.metadata[DECLARATION_METADATA_KEY]
-          names << declaration.name if declaration
-        end
-      end.to_a
     end
   end
 end
