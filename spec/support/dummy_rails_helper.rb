@@ -16,7 +16,7 @@ end
 
 # Helper to clear fixture cache in tests
 def clear_fixture_cache(fixture_name = nil)
-  cache_path = FixtureKit.configuration.cache_path
+  cache_path = FixtureKit.runner.configuration.cache_path
 
   if fixture_name
     FileUtils.rm_f(File.join(cache_path, "#{fixture_name}.json"))

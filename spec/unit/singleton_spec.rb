@@ -15,6 +15,12 @@ RSpec.describe FixtureKit::Singleton do
     end
   end
 
+  describe ".configuration" do
+    it "is not exposed on FixtureKit" do
+      expect(FixtureKit).not_to respond_to(:configuration)
+    end
+  end
+
   describe ".reset" do
     it "resets runner" do
       FixtureKit.runner

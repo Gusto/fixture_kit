@@ -35,17 +35,18 @@ RSpec.configure do |config|
 
   # Keep fixture_kit configuration isolated per example.
   config.around(:each) do |example|
-    previous_cache_path = FixtureKit.configuration.cache_path
-    previous_fixture_path = FixtureKit.configuration.fixture_path
-    previous_isolator = FixtureKit.configuration.isolator
-    previous_on_cache = FixtureKit.configuration.on_cache
+    configuration = FixtureKit.runner.configuration
+    previous_cache_path = configuration.cache_path
+    previous_fixture_path = configuration.fixture_path
+    previous_isolator = configuration.isolator
+    previous_on_cache = configuration.on_cache
 
     example.run
   ensure
-    FixtureKit.configuration.cache_path = previous_cache_path
-    FixtureKit.configuration.fixture_path = previous_fixture_path
-    FixtureKit.configuration.isolator = previous_isolator
-    FixtureKit.configuration.on_cache = previous_on_cache
+    configuration.cache_path = previous_cache_path
+    configuration.fixture_path = previous_fixture_path
+    configuration.isolator = previous_isolator
+    configuration.on_cache = previous_on_cache
   end
 
   # Clean up cache after suite

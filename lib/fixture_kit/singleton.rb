@@ -7,10 +7,6 @@ module FixtureKit
       self
     end
 
-    def configuration
-      runner.configuration
-    end
-
     def runner
       @runner ||= Runner.new
     end

@@ -6,6 +6,8 @@ require "tmpdir"
 RSpec.describe FixtureKit::Fixture do
   let(:cache_exists) { false }
   let(:cache) { instance_double(FixtureKit::Cache, exists?: cache_exists, save: nil) }
+  let(:configuration) { FixtureKit::Configuration.new }
+  let(:runner) { instance_double(FixtureKit::Runner, configuration: configuration) }
   let(:tmp_dir) { Dir.mktmpdir("fixture_kit_fixture_spec") }
   let(:fixture_path) { File.join(tmp_dir, "project_management.rb") }
 
@@ -16,6 +18,7 @@ RSpec.describe FixtureKit::Fixture do
     RUBY
 
     allow(FixtureKit::Cache).to receive(:new).and_return(cache)
+    allow(FixtureKit).to receive(:runner).and_return(runner)
   end
 
   after do
@@ -26,7 +29,7 @@ RSpec.describe FixtureKit::Fixture do
     it "calls on_cache when generating cache for the first time" do
       fixture = described_class.new("project_management", fixture_path)
       callback = spy("on_cache")
-      FixtureKit.configuration.on_cache = callback
+      configuration.on_cache = callback
 
       fixture.cache
 
@@ -37,7 +40,7 @@ RSpec.describe FixtureKit::Fixture do
     it "does not call on_cache when cache already exists and force is false" do
       fixture = described_class.new("project_management", fixture_path)
       callback = spy("on_cache")
-      FixtureKit.configuration.on_cache = callback
+      configuration.on_cache = callback
       allow(cache).to receive(:exists?).and_return(true)
 
       fixture.cache
@@ -49,7 +52,7 @@ RSpec.describe FixtureKit::Fixture do
     it "does not call on_cache during forced regeneration of existing cache" do
       fixture = described_class.new("project_management", fixture_path)
       callback = spy("on_cache")
-      FixtureKit.configuration.on_cache = callback
+      configuration.on_cache = callback
       allow(cache).to receive(:exists?).and_return(true)
 
       fixture.cache(force: true)

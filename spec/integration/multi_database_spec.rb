@@ -117,7 +117,7 @@ RSpec.describe "Multi-database integration" do
     it "loads fixture data on first run after clearing cache file" do
       clear_fixture_cache("project_management")
 
-      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
+      cache_file = File.join(FixtureKit.runner.configuration.cache_path, "project_management.json")
       expect(File.exist?(cache_file)).to be(false)
 
       fixture_set = load_fixture("project_management")
@@ -156,7 +156,7 @@ RSpec.describe "Multi-database integration" do
     it "loads nested fixture after clearing its cache file" do
       clear_fixture_cache("teams/basic")
 
-      cache_file = File.join(FixtureKit.configuration.cache_path, "teams/basic.json")
+      cache_file = File.join(FixtureKit.runner.configuration.cache_path, "teams/basic.json")
       expect(File.exist?(cache_file)).to be(false)
 
       fixture_set = load_fixture("teams/basic")
@@ -170,7 +170,7 @@ RSpec.describe "Multi-database integration" do
     it "clear_fixture_cache removes cache file and fixture still loads" do
       load_fixture("project_management")
 
-      cache_file = File.join(FixtureKit.configuration.cache_path, "project_management.json")
+      cache_file = File.join(FixtureKit.runner.configuration.cache_path, "project_management.json")
 
       clear_fixture_cache("project_management")
 

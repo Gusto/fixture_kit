@@ -82,7 +82,7 @@ RSpec.describe "RSpec integration" do
 
   describe "isolator configuration" do
     it "sets RSpec isolator by default" do
-      expect(FixtureKit.configuration.isolator).to eq(FixtureKit::RSpec::Isolator)
+      expect(FixtureKit.runner.configuration.isolator).to eq(FixtureKit::RSpec::Isolator)
     end
 
     it "keeps RSpec isolator when configure does not override it" do
@@ -90,7 +90,7 @@ RSpec.describe "RSpec integration" do
         config.fixture_path = "spec/fixture_kit"
       end
 
-      expect(FixtureKit.configuration.isolator).to eq(FixtureKit::RSpec::Isolator)
+      expect(FixtureKit.runner.configuration.isolator).to eq(FixtureKit::RSpec::Isolator)
     end
   end
 end

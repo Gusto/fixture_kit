@@ -45,7 +45,7 @@ module FixtureKit
 
     def self.configure!(config)
       config.add_setting(:fixture_kit, default: FixtureKit.runner)
-      FixtureKit.configuration.isolator = Isolator
+      FixtureKit.runner.configuration.isolator = Isolator
 
       config.extend ClassMethods
       config.include InstanceMethods, DECLARATION_METADATA_KEY
