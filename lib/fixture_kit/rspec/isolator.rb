@@ -2,7 +2,7 @@
 
 module FixtureKit
   module RSpec
-    class Generator < FixtureKit::Generator
+    class Isolator < FixtureKit::Isolator
       def run(&block)
         previous_example = ::RSpec.current_example
         previous_scope = ::RSpec.current_scope
@@ -35,7 +35,7 @@ module FixtureKit
       def build_example_group
         ::RSpec::Core::ExampleGroup.subclass(
           ::RSpec::Core::ExampleGroup,
-          "FixtureKit::RSpec::Generator",
+          "FixtureKit::RSpec::Isolator",
           [],
           []
         )

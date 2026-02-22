@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe FixtureKit::TestCase::Generator do
+RSpec.describe FixtureKit::TestCase::Isolator do
   describe ".run" do
     it "builds an ActiveSupport::TestCase harness" do
       captured_test_case_class = nil
@@ -41,12 +41,12 @@ RSpec.describe FixtureKit::TestCase::Generator do
     end
 
     it "raises FixtureKit::PregenerationError when run fails without a failure" do
-      generator = described_class.new
+      isolator = described_class.new
       result = instance_double(Minitest::Result, passed?: false, failures: [])
       test_case = instance_double(ActiveSupport::TestCase, run: result)
 
-      allow(described_class).to receive(:new).and_return(generator)
-      allow(generator).to receive(:build_test_class).and_return(test_case)
+      allow(described_class).to receive(:new).and_return(isolator)
+      allow(isolator).to receive(:build_test_class).and_return(test_case)
 
       expect { described_class.run { nil } }
         .to raise_error(FixtureKit::PregenerationError, "FixtureKit pregeneration failed")

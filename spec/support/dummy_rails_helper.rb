@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 # Boot the dummy Rails app for tests.
+require "fileutils"
 
 ENV["RAILS_ENV"] = "test"
 
@@ -10,16 +11,34 @@ require "fixture_kit"
 
 # Helper to load fixtures in tests (wraps internal API)
 def load_fixture(name)
-  FixtureKit::Runner.run(name)
+  FixtureKit.runner.register(name).mount
 end
 
 # Helper to clear fixture cache in tests
 def clear_fixture_cache(fixture_name = nil)
-  FixtureKit::Cache.clear(fixture_name)
+  cache_path = FixtureKit.configuration.cache_path
+
+  if fixture_name
+    FileUtils.rm_f(File.join(cache_path, "#{fixture_name}.json"))
+  else
+    FileUtils.rm_rf(cache_path)
+  end
 end
 
 # Create schema for both databases
 def setup_databases
+  ActiveRecord::Base.connection.disable_referential_integrity do
+    ActiveRecord::Base.connection.drop_table(:comments, if_exists: true)
+    ActiveRecord::Base.connection.drop_table(:tasks, if_exists: true)
+    ActiveRecord::Base.connection.drop_table(:projects, if_exists: true)
+    ActiveRecord::Base.connection.drop_table(:users, if_exists: true)
+  end
+
+  AnalyticsRecord.connection.disable_referential_integrity do
+    AnalyticsRecord.connection.drop_table(:activity_logs, if_exists: true)
+    AnalyticsRecord.connection.drop_table(:time_entries, if_exists: true)
+  end
+
   # Primary database schema
   ActiveRecord::Base.connection.create_table :users, force: true do |t|
     t.string :name, null: false
@@ -82,5 +101,5 @@ end
 FixtureKit.configure do |config|
   config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
   config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
-  config.generator = FixtureKit::RSpec::Generator if defined?(FixtureKit::RSpec::Generator)
+  config.isolator = FixtureKit::RSpec::Isolator if defined?(FixtureKit::RSpec::Isolator)
 end

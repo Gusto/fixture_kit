@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module FixtureKit
-  # Base class for fixture cache generators.
-  class Generator
+  # Base class for fixture cache isolators.
+  class Isolator
     def self.run(&block)
       new.run(&block)
     end

@@ -4,323 +4,98 @@ require "spec_helper"
 
 RSpec.describe FixtureKit::Cache do
   let(:cache_path) { Rails.root.join("tmp/cache/fixture_kit_test").to_s }
-  let(:fixture_path) { Rails.root.join("spec/fixture_kit").to_s }
   let(:fixture_name) { "test_fixture" }
-  let(:cache) { described_class.new(fixture_name) }
+  let(:fixture) { instance_double(FixtureKit::Fixture, name: fixture_name) }
+  let(:definition) { instance_double(FixtureKit::Definition, evaluate: nil, exposed: {}) }
+  let(:cache) { described_class.new(fixture, definition) }
+
+  let(:pass_through_isolator) do
+    Class.new do
+      def self.run(&block)
+        block.call
+      end
+    end
+  end
 
   before do
-    # Configure FixtureKit to use test paths
+    FixtureKit.reset
     FixtureKit.configure do |config|
       config.cache_path = cache_path
-      config.fixture_path = fixture_path
-      config.generator = FixtureKit::RSpec::Generator
+      config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
+      config.isolator = pass_through_isolator
     end
-
-    # Clear both disk and memory cache before each test
     FileUtils.rm_rf(cache_path)
-    described_class.clear_memory_cache
   end
 
   after do
     FileUtils.rm_rf(cache_path)
-    described_class.clear_memory_cache
+    FixtureKit.reset
   end
 
-  describe "#cache_file_path" do
-    it "returns the correct path" do
-      expect(cache.cache_file_path).to eq(File.join(cache_path, "test_fixture.json"))
+  describe "#path" do
+    it "returns the cache file path for the fixture" do
+      expect(cache.path).to eq(File.join(cache_path, "test_fixture.json"))
     end
 
     it "handles nested fixture names" do
-      nested_cache = described_class.new("teams/basic")
-      expect(nested_cache.cache_file_path).to eq(File.join(cache_path, "teams/basic.json"))
+      nested_fixture = instance_double(FixtureKit::Fixture, name: "teams/basic")
+      nested_cache = described_class.new(nested_fixture, definition)
+
+      expect(nested_cache.path).to eq(File.join(cache_path, "teams/basic.json"))
     end
   end
 
   describe "#exists?" do
-    it "returns false when neither memory nor disk cache exists" do
+    it "returns false when no cache exists" do
       expect(cache.exists?).to be(false)
     end
 
-    it "returns true when disk cache exists" do
-      FileUtils.mkdir_p(cache_path)
-      File.write(cache.cache_file_path, "{}")
+    it "returns true when cache file exists" do
+      FileUtils.mkdir_p(File.dirname(cache.path))
+      File.write(cache.path, "{}")
+
       expect(cache.exists?).to be(true)
-    end
-
-    it "returns true when memory cache exists" do
-      described_class.memory_cache[fixture_name] = { "records" => {}, "exposed" => {} }
-      expect(cache.exists?).to be(true)
-    end
-
-    it "returns true when memory cache exists even without disk cache" do
-      described_class.memory_cache[fixture_name] = { "records" => {}, "exposed" => {} }
-      expect(File.exist?(cache.cache_file_path)).to be(false)
-      expect(cache.exists?).to be(true)
-    end
-  end
-
-  describe "#load" do
-    let(:test_data) do
-      {
-        "records" => { "User" => "INSERT INTO users VALUES (1, 'Alice')" },
-        "exposed" => { "alice" => { "model" => "User", "id" => 1 } }
-      }
-    end
-
-    it "returns false when cache does not exist" do
-      expect(cache.load).to be(false)
-    end
-
-    it "loads data from disk cache" do
-      FileUtils.mkdir_p(cache_path)
-      File.write(cache.cache_file_path, JSON.generate(test_data))
-
-      expect(cache.load).to be(true)
-      expect(cache.records).to eq(test_data["records"])
-      expect(cache.exposed).to eq(test_data["exposed"])
-    end
-
-    it "stores data in memory cache after loading from disk" do
-      FileUtils.mkdir_p(cache_path)
-      File.write(cache.cache_file_path, JSON.generate(test_data))
-
-      cache.load
-
-      expect(described_class.memory_cache[fixture_name]).to eq(test_data)
-    end
-
-    it "loads data from memory cache without reading disk" do
-      described_class.memory_cache[fixture_name] = test_data
-
-      # No disk file exists
-      expect(File.exist?(cache.cache_file_path)).to be(false)
-
-      expect(cache.load).to be(true)
-      expect(cache.records).to eq(test_data["records"])
-      expect(cache.exposed).to eq(test_data["exposed"])
-    end
-
-    it "prefers memory cache over disk cache" do
-      memory_data = {
-        "records" => { "User" => "MEMORY INSERT" },
-        "exposed" => { "memory_user" => { "model" => "User", "id" => 99 } }
-      }
-      disk_data = {
-        "records" => { "User" => "DISK INSERT" },
-        "exposed" => { "disk_user" => { "model" => "User", "id" => 1 } }
-      }
-
-      # Set up both caches
-      described_class.memory_cache[fixture_name] = memory_data
-      FileUtils.mkdir_p(cache_path)
-      File.write(cache.cache_file_path, JSON.generate(disk_data))
-
-      cache.load
-
-      # Should use memory cache
-      expect(cache.records).to eq(memory_data["records"])
-      expect(cache.exposed).to eq(memory_data["exposed"])
-    end
-
-    it "only parses JSON once across multiple loads" do
-      FileUtils.mkdir_p(cache_path)
-      File.write(cache.cache_file_path, JSON.generate(test_data))
-
-      # First load - reads from disk
-      cache1 = described_class.new(fixture_name)
-      cache1.load
-
-      # Second load - should use memory cache
-      cache2 = described_class.new(fixture_name)
-
-      # Delete the disk file to prove memory cache is used
-      File.delete(cache.cache_file_path)
-
-      expect(cache2.load).to be(true)
-      expect(cache2.records).to eq(test_data["records"])
     end
   end
 
   describe "#save" do
-    let(:exposed) { { "alice" => { "model" => "User", "id" => 1 } } }
+    it "writes records and exposed data to disk" do
+      fixture_definition = FixtureKit::Definition.new do
+        alice = User.create!(name: "Alice", email: "alice-cache@example.com")
+        expose(alice: alice)
+      end
+      fixture_cache = described_class.new(fixture, fixture_definition)
 
-    # Use empty models_with_connections for basic save tests
-    # Full integration is tested in integration specs
-    let(:models_with_connections) { {} }
+      fixture_cache.save
 
-    it "writes data to disk" do
-      cache.save(models_with_connections: models_with_connections, exposed_mapping: exposed)
-
-      expect(File.exist?(cache.cache_file_path)).to be(true)
-
-      saved_data = JSON.parse(File.read(cache.cache_file_path))
-      expect(saved_data["records"]).to eq({})
-      expect(saved_data["exposed"]).to eq(exposed)
-    end
-
-    it "stores data in memory cache" do
-      cache.save(models_with_connections: models_with_connections, exposed_mapping: exposed)
-
-      expect(described_class.memory_cache[fixture_name]).to eq({
-        "records" => {},
-        "exposed" => exposed
-      })
-    end
-
-    it "creates nested directories for nested fixture names" do
-      nested_cache = described_class.new("teams/engineering/backend")
-      nested_cache.save(models_with_connections: models_with_connections, exposed_mapping: exposed)
-
-      expect(File.exist?(nested_cache.cache_file_path)).to be(true)
-    end
-
-    it "sets instance attributes" do
-      cache.save(models_with_connections: models_with_connections, exposed_mapping: exposed)
-
-      expect(cache.records).to eq({})
-      expect(cache.exposed).to eq(exposed)
+      expect(File.exist?(fixture_cache.path)).to be(true)
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["records"]).to have_key("User")
+      expect(data["exposed"]).to have_key("alice")
     end
   end
 
-  describe ".clear_memory_cache" do
-    before do
-      described_class.memory_cache["fixture_a"] = { "records" => {} }
-      described_class.memory_cache["fixture_b"] = { "records" => {} }
+  describe "#load" do
+    it "raises when cache is missing" do
+      expect do
+        cache.load
+      end.to raise_error(FixtureKit::CacheMissingError, "Cache does not exist for fixture 'test_fixture'")
     end
 
-    it "clears a specific fixture from memory cache" do
-      described_class.clear_memory_cache("fixture_a")
+    it "replays SQL and returns a repository of exposed records" do
+      fixture_definition = FixtureKit::Definition.new do
+        alice = User.create!(name: "Alice", email: "alice-replay@example.com")
+        expose(alice: alice)
+      end
+      fixture_cache = described_class.new(fixture, fixture_definition)
 
-      expect(described_class.memory_cache.key?("fixture_a")).to be(false)
-      expect(described_class.memory_cache.key?("fixture_b")).to be(true)
-    end
+      fixture_cache.save
 
-    it "clears all fixtures from memory cache when no argument given" do
-      described_class.clear_memory_cache
+      User.delete_all
+      repository = fixture_cache.load
 
-      expect(described_class.memory_cache).to be_empty
-    end
-
-  end
-
-  describe ".clear" do
-    before do
-      # Set up memory cache
-      described_class.memory_cache["fixture_a"] = { "records" => {} }
-      described_class.memory_cache["fixture_b"] = { "records" => {} }
-
-      # Set up disk cache
-      FileUtils.mkdir_p(cache_path)
-      File.write(File.join(cache_path, "fixture_a.json"), "{}")
-      File.write(File.join(cache_path, "fixture_b.json"), "{}")
-    end
-
-    it "clears a specific fixture from both memory and disk" do
-      described_class.clear("fixture_a")
-
-      # Memory cache
-      expect(described_class.memory_cache.key?("fixture_a")).to be(false)
-      expect(described_class.memory_cache.key?("fixture_b")).to be(true)
-
-      # Disk cache
-      expect(File.exist?(File.join(cache_path, "fixture_a.json"))).to be(false)
-      expect(File.exist?(File.join(cache_path, "fixture_b.json"))).to be(true)
-    end
-
-    it "clears all fixtures from both memory and disk when no fixture_name given" do
-      described_class.clear
-
-      # Memory cache
-      expect(described_class.memory_cache).to be_empty
-
-      # Disk cache
-      expect(Dir.exist?(cache_path)).to be(false)
-    end
-  end
-
-  describe ".generate_all" do
-    before do
-      described_class.clear
-    end
-
-    it "generates caches for all fixtures" do
-      project_cache = File.join(cache_path, "project_management.json")
-      teams_cache = File.join(cache_path, "teams/basic.json")
-
-      expect(File.exist?(project_cache)).to be(false)
-      expect(File.exist?(teams_cache)).to be(false)
-
-      described_class.generate_all
-
-      expect(File.exist?(project_cache)).to be(true)
-      expect(File.exist?(teams_cache)).to be(true)
-    end
-
-    it "does not persist data to database" do
-      # Database should be empty before
-      expect(User.count).to eq(0)
-      expect(ActivityLog.count).to eq(0)
-      expect(TimeEntry.count).to eq(0)
-
-      described_class.generate_all
-
-      # Database should still be empty (transactions rolled back)
-      expect(User.count).to eq(0)
-      expect(ActivityLog.count).to eq(0)
-      expect(TimeEntry.count).to eq(0)
-
-      # But caches should exist
-      project_cache = File.join(cache_path, "project_management.json")
-      expect(File.exist?(project_cache)).to be(true)
-    end
-
-    it "regenerates caches even if they already exist" do
-      # Generate cache
-      described_class.generate_all
-
-      project_cache = File.join(cache_path, "project_management.json")
-
-      # Corrupt the cache file with invalid content
-      File.write(project_cache, '{"records": {}, "exposed": {}}')
-
-      # Pregenerate again - should overwrite with valid content
-      described_class.generate_all
-
-      # Cache should have actual records now
-      cache_data = JSON.parse(File.read(project_cache))
-      expect(cache_data["records"]).to have_key("User")
-      expect(cache_data["exposed"]).to have_key("alice")
-    end
-  end
-
-  describe ".generate" do
-    before do
-      described_class.clear
-    end
-
-    it "uses the configured generator lifecycle" do
-      generator = class_double("CustomGenerator")
-      previous_generator = FixtureKit.configuration.generator
-      FixtureKit.configuration.generator = generator
-
-      expect(generator).to receive(:run).and_yield
-      expect(described_class).to receive(:clear).with("project_management")
-      expect(FixtureKit::Runner).to receive(:run).with("project_management", force: true)
-
-      described_class.generate("project_management")
-    ensure
-      FixtureKit.configuration.generator = previous_generator
-    end
-
-    it "can generate cache for a selected fixture only" do
-      project_cache = File.join(cache_path, "project_management.json")
-      teams_cache = File.join(cache_path, "teams/basic.json")
-
-      described_class.generate("project_management")
-
-      expect(File.exist?(project_cache)).to be(true)
-      expect(File.exist?(teams_cache)).to be(false)
+      expect(repository.alice).to be_a(User)
+      expect(repository.alice.name).to eq("Alice")
     end
   end
 end

@@ -9,7 +9,7 @@ RSpec.configure do |config|
   end
 end
 
-RSpec.describe FixtureKit::RSpec::Generator do
+RSpec.describe FixtureKit::RSpec::Isolator do
   describe ".run" do
     it "runs inside an isolated RSpec example context" do
       harness_example = nil
@@ -59,14 +59,14 @@ RSpec.describe FixtureKit::RSpec::Generator do
     end
 
     it "raises FixtureKit::PregenerationError when run fails without an exception" do
-      generator = described_class.new
+      isolator = described_class.new
       example_group = double("example_group")
       example = instance_double(RSpec::Core::Example)
       instance = Object.new
 
-      allow(described_class).to receive(:new).and_return(generator)
-      allow(generator).to receive(:build_example_group).and_return(example_group)
-      allow(generator).to receive(:build_example).and_return(example)
+      allow(described_class).to receive(:new).and_return(isolator)
+      allow(isolator).to receive(:build_example_group).and_return(example_group)
+      allow(isolator).to receive(:build_example).and_return(example)
       allow(example_group).to receive(:new).and_return(instance)
       allow(example_group).to receive(:remove_example).with(example)
       allow(example).to receive(:inspect_output).and_return("output")

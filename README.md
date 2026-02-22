@@ -136,7 +136,7 @@ FixtureKit.configure do |config|
 
   # Optional callback, called once when a fixture cache is first generated.
   # Receives the fixture name as a String.
-  # config.on_generate = ->(fixture_name) { puts "generated #{fixture_name}" }
+  # config.on_cache = ->(fixture_name) { puts "cached #{fixture_name}" }
 end
 ```
 

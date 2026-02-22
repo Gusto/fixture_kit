@@ -3,143 +3,94 @@
 require "spec_helper"
 
 RSpec.describe "RSpec integration" do
-  describe ".fixture_names_for_loaded_examples" do
-    it "collects unique fixture names from loaded examples" do
-      metadata_key = FixtureKit::RSpec::DECLARATION_METADATA_KEY
-      project_declaration = FixtureKit::RSpec::Declaration.new("project_management")
-      teams_declaration = FixtureKit::RSpec::Declaration.new("teams/basic")
-      world = instance_double(
-        RSpec::Core::World,
-        filtered_examples: {
-          group_a: [
-            instance_double(RSpec::Core::Example, metadata: { metadata_key => project_declaration }),
-            instance_double(RSpec::Core::Example, metadata: { metadata_key => project_declaration })
-          ],
-          group_b: [
-            instance_double(RSpec::Core::Example, metadata: { metadata_key => teams_declaration }),
-            instance_double(RSpec::Core::Example, metadata: {})
-          ]
-        }
-      )
+  describe "FixtureKit::RSpec::ClassMethods#fixture" do
+    it "registers the fixture name through the runner and stores declaration metadata" do
+      fixture = instance_double(FixtureKit::Fixture)
+      runner = instance_double(FixtureKit::Runner, register: fixture)
+      group_class = Class.new do
+        extend FixtureKit::RSpec::ClassMethods
 
-      allow(RSpec).to receive(:world).and_return(world)
+        def self.metadata
+          @metadata ||= {}
+        end
+      end
 
-      expect(FixtureKit::RSpec.fixture_names_for_loaded_examples)
-        .to eq(["project_management", "teams/basic"])
+      allow(RSpec.configuration).to receive(:fixture_kit).and_return(runner)
+
+      group_class.fixture("project_management")
+
+      expect(runner).to have_received(:register).with("project_management")
+      expect(group_class.metadata[FixtureKit::RSpec::DECLARATION_METADATA_KEY]).to eq(fixture)
     end
   end
 
   describe ".configure!" do
-    it "registers the suite cache hook lazily" do
-      config = double("RSpec config")
-      first_matching_callback = nil
-      suite_callback = nil
+    let(:config) { double("RSpec config") }
+    let(:configuration) { FixtureKit::Configuration.new }
+    let(:runner) { instance_double(FixtureKit::Runner, start: nil, configuration: configuration) }
+    let(:fixture) { instance_double(FixtureKit::Fixture, mount: :fixture_set) }
 
+    before do
+      allow(FixtureKit).to receive(:runner).and_return(runner)
+      allow(config).to receive(:add_setting)
+      allow(config).to receive(:fixture_kit).and_return(runner)
       allow(config).to receive(:extend)
       allow(config).to receive(:include)
-      allow(config).to receive(:prepend_before)
-      allow(config).to receive(:before) do |scope, &block|
-        suite_callback = block if scope == :suite
-      end
-      allow(config).to receive(:when_first_matching_example_defined) do |metadata, &block|
-        expect(metadata).to eq(FixtureKit::RSpec::DECLARATION_METADATA_KEY)
-        first_matching_callback = block
-      end
-
-      FixtureKit::RSpec.configure!(config)
-
-      expect(first_matching_callback).to be_a(Proc)
-      expect(suite_callback).to be_nil
-
-      first_matching_callback.call
-
-      expect(suite_callback).to be_a(Proc)
     end
 
-    it "pregenerates only loaded fixture names when autogenerate is disabled" do
-      config = double("RSpec config")
-      first_matching_callback = nil
+    it "registers lifecycle hooks and starts the runner at suite start" do
+      prepend_callback = nil
       suite_callback = nil
 
-      allow(config).to receive(:extend)
-      allow(config).to receive(:include)
-      allow(config).to receive(:prepend_before)
-      allow(config).to receive(:before) do |scope, &block|
+      allow(config).to receive(:prepend_before) do |_scope, _metadata_key, &block|
+        prepend_callback = block
+      end
+      allow(config).to receive(:append_before) do |scope, &block|
         suite_callback = block if scope == :suite
       end
-      allow(config).to receive(:when_first_matching_example_defined) do |_metadata, &block|
-        first_matching_callback = block
-      end
-
-      FixtureKit.configuration.autogenerate = false
-      allow(FixtureKit::RSpec).to receive(:fixture_names_for_loaded_examples).and_return(["project_management"])
-      allow(FixtureKit::Cache).to receive(:generate)
 
       FixtureKit::RSpec.configure!(config)
-      first_matching_callback.call
-      suite_callback.call
 
-      expect(FixtureKit::Cache).to have_received(:generate).with("project_management")
+      expect(config).to have_received(:add_setting).with(
+        :fixture_kit,
+        default: runner
+      )
+      expect(prepend_callback).to be_a(Proc)
+      expect(suite_callback).to be_a(Proc)
+
+      suite_callback.call
+      expect(runner).to have_received(:start)
+    end
+
+    it "loads fixture_set in prepend_before hook" do
+      prepend_callback = nil
+      example = instance_double(RSpec::Core::Example, metadata: { FixtureKit::RSpec::DECLARATION_METADATA_KEY => fixture })
+      hook_host = Object.new
+
+      allow(config).to receive(:prepend_before) do |_scope, _metadata_key, &block|
+        prepend_callback = block
+      end
+      allow(config).to receive(:append_before)
+
+      FixtureKit::RSpec.configure!(config)
+      hook_host.instance_exec(example, &prepend_callback)
+
+      expect(fixture).to have_received(:mount)
+      expect(hook_host.instance_variable_get(:@_fixture_kit_fixture_set)).to eq(:fixture_set)
     end
   end
 
-  describe "generator configuration" do
-    it "sets RSpec generator by default" do
-      expect(FixtureKit.configuration.generator).to eq(FixtureKit::RSpec::Generator)
+  describe "isolator configuration" do
+    it "sets RSpec isolator by default" do
+      expect(FixtureKit.configuration.isolator).to eq(FixtureKit::RSpec::Isolator)
     end
 
-    it "keeps RSpec generator when configure does not override it" do
+    it "keeps RSpec isolator when configure does not override it" do
       FixtureKit.configure do |config|
         config.fixture_path = "spec/fixture_kit"
       end
 
-      expect(FixtureKit.configuration.generator).to eq(FixtureKit::RSpec::Generator)
-    end
-  end
-
-  describe "FIXTURE_KIT_PRESERVE_CACHE environment variable" do
-    # Note: The before(:suite) hook runs once at test suite start, so we can't
-    # directly test its behavior. These tests verify the env var parsing logic.
-
-    def preserve_cache?(env_value)
-      env_value.to_s.match?(/\A(1|true|yes)\z/i)
-    end
-
-    it "treats '1' as truthy" do
-      expect(preserve_cache?("1")).to be(true)
-    end
-
-    it "treats 'true' as truthy (case insensitive)" do
-      expect(preserve_cache?("true")).to be(true)
-      expect(preserve_cache?("TRUE")).to be(true)
-      expect(preserve_cache?("True")).to be(true)
-    end
-
-    it "treats 'yes' as truthy (case insensitive)" do
-      expect(preserve_cache?("yes")).to be(true)
-      expect(preserve_cache?("YES")).to be(true)
-      expect(preserve_cache?("Yes")).to be(true)
-    end
-
-    it "treats nil as falsy" do
-      expect(preserve_cache?(nil)).to be(false)
-    end
-
-    it "treats empty string as falsy" do
-      expect(preserve_cache?("")).to be(false)
-    end
-
-    it "treats '0' as falsy" do
-      expect(preserve_cache?("0")).to be(false)
-    end
-
-    it "treats 'false' as falsy" do
-      expect(preserve_cache?("false")).to be(false)
-    end
-
-    it "treats other values as falsy" do
-      expect(preserve_cache?("no")).to be(false)
-      expect(preserve_cache?("random")).to be(false)
+      expect(FixtureKit.configuration.isolator).to eq(FixtureKit::RSpec::Isolator)
     end
   end
 end

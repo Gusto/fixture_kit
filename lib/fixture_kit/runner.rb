@@ -1,93 +1,45 @@
 # frozen_string_literal: true
 
-require "active_support/inflector"
+require "fileutils"
 
 module FixtureKit
   class Runner
-    def self.run(fixture_name, force: false)
-      new(fixture_name).run(force: force)
+    PRESERVE_CACHE_ENV_KEY = "FIXTURE_KIT_PRESERVE_CACHE"
+
+    attr_reader :configuration, :registry
+
+    def initialize
+      @configuration = Configuration.new
+      @registry = Registry.new(configuration)
+      @started = false
     end
 
-    def initialize(fixture_name)
-      @fixture_name = fixture_name
-      @cache = Cache.new(@fixture_name)
-    end
-
-    def run(force: false)
-      if force
-        execute_and_cache
-      elsif @cache.exists?
-        execute_from_cache
-      elsif FixtureKit.configuration.autogenerate
-        execute_and_cache
-      else
-        raise FixtureKit::CacheMissingError, <<~ERROR
-          Cache not found for fixture '#{@fixture_name}'.
-
-          Run your tests with autogenerate enabled to generate the cache:
-            FixtureKit.configuration.autogenerate = true
-
-          Or generate caches by running your test suite once with autogenerate enabled.
-        ERROR
+    def register(name)
+      registry.add(name).tap do |fixture|
+        fixture.cache if started?
       end
+    end
+
+    def start
+      raise RunnerAlreadyStartedError, "FixtureKit::Runner has already been started" if started?
+      @started = true
+
+      clear_cache unless preserve_cache?
+      registry.fixtures.each(&:cache)
+    end
+
+    def started?
+      @started
     end
 
     private
 
-    def execute_and_cache
-      fixture = Registry.fetch(@fixture_name)
-
-      # Start capturing SQL
-      capture = SqlCapture.new
-      capture.start
-
-      # Execute fixture definition - returns exposed records hash
-      exposed = fixture.execute
-
-      # Stop capturing and get affected models with their connections
-      models_with_connections = capture.stop
-
-      # Save cache
-      @cache.save(
-        models_with_connections: models_with_connections,
-        exposed_mapping: build_exposed_mapping(exposed)
-      )
-
-      # Return Repository from the exposed records
-      Repository.new(exposed)
+    def clear_cache
+      FileUtils.rm_rf(configuration.cache_path)
     end
 
-    def execute_from_cache
-      @cache.load
-
-      # Execute cached SQL statements by model
-      @cache.records.each do |model_name, sql|
-        next if sql.nil? || sql.empty?
-
-        model = ActiveSupport::Inflector.constantize(model_name)
-        connection = model.connection
-        connection.execute(sql)
-      end
-
-      # Query exposed records and build Repository.
-      @cache.build_repository
-    end
-
-    def build_exposed_mapping(exposed)
-      mapping = {}
-
-      exposed.each do |name, record_or_records|
-        if record_or_records.is_a?(Array)
-          mapping[name.to_s] = record_or_records.map do |record|
-            { "model" => record.class.name, "id" => record.id }
-          end
-        else
-          record = record_or_records
-          mapping[name.to_s] = { "model" => record.class.name, "id" => record.id }
-        end
-      end
-
-      mapping
+    def preserve_cache?
+      ENV[PRESERVE_CACHE_ENV_KEY].to_s.match?(/\A(1|true|yes)\z/i)
     end
   end
 end

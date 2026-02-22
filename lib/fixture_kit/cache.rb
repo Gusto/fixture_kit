@@ -7,109 +7,54 @@ require "active_support/inflector"
 
 module FixtureKit
   class Cache
-    # In-memory cache to avoid re-reading/parsing JSON for every test
-    @memory_cache = {}
+    attr_reader :fixture
 
-    class << self
-      attr_accessor :memory_cache
-
-      def clear_memory_cache(fixture_name = nil)
-        if fixture_name
-          @memory_cache.delete(fixture_name)
-        else
-          @memory_cache.clear
-        end
-      end
-
-      # Clear fixture cache (both memory and disk)
-      def clear(fixture_name = nil)
-        clear_memory_cache(fixture_name)
-
-        cache_path = FixtureKit.configuration.cache_path
-        if fixture_name
-          cache_file = File.join(cache_path, "#{fixture_name}.json")
-          FileUtils.rm_f(cache_file)
-        else
-          FileUtils.rm_rf(cache_path)
-        end
-      end
-
-      # Generate caches for all fixtures.
-      # Each fixture is generated in a transaction that rolls back, so no data persists.
-      def generate_all
-        Registry.load_definitions
-        Registry.fixtures.each { |fixture| generate(fixture.name) }
-      end
-
-      def generate(fixture_name)
-        clear(fixture_name)
-
-        FixtureKit.configuration.generator.run do
-          Runner.run(fixture_name, force: true)
-        end
-      end
+    def initialize(fixture, definition)
+      @fixture = fixture
+      @definition = definition
     end
 
-    attr_reader :records, :exposed
-
-    def initialize(fixture_name)
-      @fixture_name = fixture_name
-      @records = {}
-      @exposed = {}
-    end
-
-    def cache_file_path
-      cache_path = FixtureKit.configuration.cache_path
-      File.join(cache_path, "#{@fixture_name}.json")
+    def path
+      File.join(FixtureKit.configuration.cache_path, "#{fixture.name}.json")
     end
 
     def exists?
-      # Check in-memory cache first, then disk
-      self.class.memory_cache.key?(@fixture_name) || File.exist?(cache_file_path)
+      @data || File.exist?(path)
     end
 
     def load
-      # Check in-memory cache first
-      if self.class.memory_cache.key?(@fixture_name)
-        data = self.class.memory_cache[@fixture_name]
-        @records = data.fetch("records")
-        @exposed = data.fetch("exposed")
-        return true
+      unless exists?
+        raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{fixture.name}'"
       end
 
-      # Fall back to disk
-      return false unless File.exist?(cache_file_path)
+      @data ||= JSON.parse(File.read(path))
+      @data.fetch("records").each do |model_name, sql|
+        model = ActiveSupport::Inflector.constantize(model_name)
+        model.connection.execute(sql)
+      end
 
-      data = JSON.parse(File.read(cache_file_path))
-      @records = data.fetch("records")
-      @exposed = data.fetch("exposed")
-
-      # Store in memory for subsequent loads
-      self.class.memory_cache[@fixture_name] = data
-
-      true
+      build_repository(@data.fetch("exposed"))
     end
 
-    def save(models_with_connections:, exposed_mapping:)
-      @records = generate_statements(models_with_connections)
-      @exposed = exposed_mapping
+    def save
+      FixtureKit.configuration.isolator.run do
+        models = SqlSubscriber.capture do
+          @definition.evaluate
+        end
 
-      FileUtils.mkdir_p(File.dirname(cache_file_path))
+        @data = {
+          "records" => generate_statements(models),
+          "exposed" => build_exposed_mapping(@definition.exposed)
+        }
+      end
 
-      data = {
-        "records" => @records,
-        "exposed" => @exposed
-      }
-
-      # Store in memory cache
-      self.class.memory_cache[@fixture_name] = data
-
-      File.write(cache_file_path, JSON.pretty_generate(data))
+      FileUtils.mkdir_p(File.dirname(path))
+      File.write(path, JSON.pretty_generate(@data))
     end
 
     # Query exposed records from the database and return a Repository.
-    def build_repository
-      exposed_records = @exposed.each_with_object({}) do |(name, value), hash|
+    def build_repository(exposed)
+      exposed_records = exposed.each_with_object({}) do |(name, value), hash|
         was_array = value.is_a?(Array)
         records = Array.wrap(value).map { |record_info| find_exposed_record(record_info.fetch("model"), record_info.fetch("id"), name) }
         hash[name.to_sym] = was_array ? records : records.first
@@ -125,27 +70,27 @@ module FixtureKit
       model.find(id)
     rescue ActiveRecord::RecordNotFound
       raise FixtureKit::ExposedRecordNotFound,
-        "Could not find #{model_name} with id=#{id} for exposed record '#{exposed_name}' in fixture '#{@fixture_name}'"
+        "Could not find #{model_name} with id=#{id} for exposed record '#{exposed_name}' in fixture '#{@fixture.name}'"
     end
 
-    def generate_statements(models_with_connections)
+    def generate_statements(models)
       statements_by_model = {}
 
-      models_with_connections.each do |model, connection|
+      models.each do |model|
         columns = model.column_names
 
         rows = []
         model.order(:id).find_each do |record|
           row_values = columns.map do |col|
             value = record.read_attribute_before_type_cast(col)
-            connection.quote(value)
+            model.connection.quote(value)
           end
           rows << "(#{row_values.join(", ")})"
         end
 
         next if rows.empty?
 
-        sql = build_insert_sql(model.table_name, columns, rows, connection)
+        sql = build_insert_sql(model.table_name, columns, rows, model.connection)
         statements_by_model[model.name] = sql
       end
 
@@ -173,6 +118,14 @@ module FixtureKit
         sql.sub(/\AINSERT INTO/i, "INSERT IGNORE INTO")
       else
         sql
+      end
+    end
+
+    def build_exposed_mapping(exposed)
+      exposed.each_with_object({}) do |(name, value), hash|
+        was_array = value.is_a?(Array)
+        records = Array.wrap(value).map { |record| { "model" => record.class.name, "id" => record.id } }
+        hash[name] = was_array ? records : records.first
       end
     end
   end
