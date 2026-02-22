@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    name: test (ruby ${{ matrix.ruby }}, ${{ matrix.appraisal }}, ${{ matrix.integration_framework }})
+    name: test (${{ matrix.appraisal }}, ${{ matrix.integration_framework }})
 
     strategy:
       fail-fast: false

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "bundler"
 require "open3"
 
 RSpec.describe "Dummy app integration" do
@@ -9,22 +8,20 @@ RSpec.describe "Dummy app integration" do
   INTEGRATION_FRAMEWORK = ENV.fetch("FIXTURE_KIT_INTEGRATION_FRAMEWORK", "rspec")
 
   def run_dummy_specs
-    Bundler.with_unbundled_env do
-      Open3.capture3(
-        {
-          "RAILS_ENV" => "test",
-          "FIXTURE_KIT_INTEGRATION_FRAMEWORK" => INTEGRATION_FRAMEWORK
-        },
-        "bundle",
-        "exec",
-        "bin/rspec",
-        "--no-color",
-        "--format",
-        "documentation",
-        DUMMY_SPEC_PATH,
-        chdir: DUMMY_ROOT
-      )
-    end
+    Open3.capture3(
+      {
+        "RAILS_ENV" => "test",
+        "FIXTURE_KIT_INTEGRATION_FRAMEWORK" => INTEGRATION_FRAMEWORK
+      },
+      "bundle",
+      "exec",
+      "bin/rspec",
+      "--no-color",
+      "--format",
+      "documentation",
+      DUMMY_SPEC_PATH,
+      chdir: DUMMY_ROOT
+    )
   end
 
   it "runs fixture_kit behavior in a standalone dummy app" do
