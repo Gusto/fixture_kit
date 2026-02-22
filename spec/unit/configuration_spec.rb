@@ -4,8 +4,8 @@ require "spec_helper"
 
 RSpec.describe FixtureKit::Configuration do
   describe "#isolator" do
-    it "defaults to FixtureKit::TestCase::Isolator" do
-      expect(described_class.new.isolator).to eq(FixtureKit::TestCase::Isolator)
+    it "defaults to FixtureKit::Minitest::Isolator" do
+      expect(described_class.new.isolator).to eq(FixtureKit::Minitest::Isolator)
     end
 
     it "returns an explicitly configured class" do

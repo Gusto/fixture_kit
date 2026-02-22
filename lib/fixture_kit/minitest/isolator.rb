@@ -4,7 +4,7 @@ require "active_support/test_case"
 require "active_record/fixtures"
 
 module FixtureKit
-  module TestCase
+  module Minitest
     class Isolator < FixtureKit::Isolator
       TEST_METHOD_NAME = "test_fixture_kit_cache_pregeneration"
 

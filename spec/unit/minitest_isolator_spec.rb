@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe FixtureKit::TestCase::Isolator do
+RSpec.describe FixtureKit::Minitest::Isolator do
   describe ".run" do
     it "builds an ActiveSupport::TestCase harness" do
       captured_test_case_class = nil

@@ -10,7 +10,7 @@ module FixtureKit
     def initialize
       @fixture_path = nil
       @cache_path = nil
-      @isolator = FixtureKit::TestCase::Isolator
+      @isolator = FixtureKit::Minitest::Isolator
       @on_cache = nil
     end
 
@@ -25,9 +25,9 @@ module FixtureKit
     private
 
     def detect_fixture_path
-      if defined?(RSpec)
+      if defined?(::RSpec)
         "spec/fixture_kit"
-      elsif defined?(Minitest)
+      elsif defined?(::Minitest)
         "test/fixture_kit"
       elsif Dir.exist?("spec")
         "spec/fixture_kit"
