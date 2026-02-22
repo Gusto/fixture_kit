@@ -3,12 +3,11 @@
 require "spec_helper"
 
 RSpec.describe FixtureKit::Registry do
-  let(:configuration) do
-    FixtureKit::Configuration.new.tap do |config|
-      config.fixture_path = Rails.root.join("fixture_kit").to_s
+  let(:runner) do
+    FixtureKit::Runner.new.tap do |runner|
+      runner.configuration.fixture_path = Rails.root.join("fixture_kit").to_s
     end
   end
-  let(:runner) { instance_double(FixtureKit::Runner, configuration: configuration) }
 
   before do
     allow(FixtureKit).to receive(:runner).and_return(runner)

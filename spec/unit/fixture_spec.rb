@@ -6,8 +6,8 @@ require "tmpdir"
 RSpec.describe FixtureKit::Fixture do
   let(:cache_exists) { false }
   let(:cache) { instance_double(FixtureKit::Cache, exists?: cache_exists, save: nil) }
-  let(:configuration) { FixtureKit::Configuration.new }
-  let(:runner) { instance_double(FixtureKit::Runner, configuration: configuration) }
+  let(:runner) { FixtureKit::Runner.new }
+  let(:configuration) { runner.configuration }
   let(:tmp_dir) { Dir.mktmpdir("fixture_kit_fixture_spec") }
   let(:fixture_path) { File.join(tmp_dir, "project_management.rb") }
 
