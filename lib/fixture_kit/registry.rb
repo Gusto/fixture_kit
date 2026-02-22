@@ -4,6 +4,8 @@ require "pathname"
 
 module FixtureKit
   class Registry
+    include ConfigurationHelper
+
     def initialize
       @registry = {}
     end
@@ -27,7 +29,7 @@ module FixtureKit
     private
 
     def fixture_file_path(name)
-      File.expand_path(File.join(FixtureKit.runner.configuration.fixture_path, "#{name}.rb"))
+      File.expand_path(File.join(configuration.fixture_path, "#{name}.rb"))
     end
   end
 end

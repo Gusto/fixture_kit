@@ -134,7 +134,7 @@ FixtureKit.configure do |config|
   # config.isolator = FixtureKit::Minitest::Isolator
   # config.isolator = FixtureKit::RSpec::Isolator
 
-  # Optional callback, called once when a fixture cache is first generated.
+  # Optional callback, called whenever a fixture cache is generated.
   # Receives the fixture name as a String.
   # config.on_cache = ->(fixture_name) { puts "cached #{fixture_name}" }
 end

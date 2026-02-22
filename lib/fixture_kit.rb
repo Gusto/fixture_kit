@@ -12,6 +12,7 @@ module FixtureKit
 
   autoload :VERSION,       File.expand_path("fixture_kit/version", __dir__)
   autoload :Configuration, File.expand_path("fixture_kit/configuration", __dir__)
+  autoload :ConfigurationHelper, File.expand_path("fixture_kit/configuration_helper", __dir__)
   autoload :Singleton,     File.expand_path("fixture_kit/singleton", __dir__)
   autoload :Fixture,       File.expand_path("fixture_kit/fixture", __dir__)
   autoload :Definition,    File.expand_path("fixture_kit/definition", __dir__)

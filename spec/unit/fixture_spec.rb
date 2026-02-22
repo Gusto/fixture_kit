@@ -26,15 +26,16 @@ RSpec.describe FixtureKit::Fixture do
   end
 
   describe "#cache" do
-    it "calls on_cache when generating cache for the first time" do
+    it "calls on_cache before saving when generating cache for the first time" do
       fixture = described_class.new("project_management", fixture_path)
       callback = spy("on_cache")
       configuration.on_cache = callback
 
+      expect(callback).to receive(:call).with("project_management").ordered
+      expect(cache).to receive(:save).ordered
+
       fixture.cache
 
-      expect(cache).to have_received(:save)
-      expect(callback).to have_received(:call).with("project_management")
     end
 
     it "does not call on_cache when cache already exists and force is false" do
@@ -49,16 +50,17 @@ RSpec.describe FixtureKit::Fixture do
       expect(callback).not_to have_received(:call)
     end
 
-    it "does not call on_cache during forced regeneration of existing cache" do
+    it "calls on_cache during forced regeneration of existing cache" do
       fixture = described_class.new("project_management", fixture_path)
       callback = spy("on_cache")
       configuration.on_cache = callback
       allow(cache).to receive(:exists?).and_return(true)
 
+      expect(callback).to receive(:call).with("project_management").ordered
+      expect(cache).to receive(:save).ordered
+
       fixture.cache(force: true)
 
-      expect(cache).to have_received(:save)
-      expect(callback).not_to have_received(:call)
     end
   end
 end

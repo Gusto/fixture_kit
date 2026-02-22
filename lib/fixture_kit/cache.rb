@@ -7,6 +7,8 @@ require "active_support/inflector"
 
 module FixtureKit
   class Cache
+    include ConfigurationHelper
+
     attr_reader :fixture
 
     def initialize(fixture, definition)
@@ -15,7 +17,7 @@ module FixtureKit
     end
 
     def path
-      File.join(FixtureKit.runner.configuration.cache_path, "#{fixture.name}.json")
+      File.join(configuration.cache_path, "#{fixture.name}.json")
     end
 
     def exists?
@@ -37,7 +39,7 @@ module FixtureKit
     end
 
     def save
-      FixtureKit.runner.configuration.isolator.run do
+      configuration.isolator.run do
         models = SqlSubscriber.capture do
           @definition.evaluate
         end

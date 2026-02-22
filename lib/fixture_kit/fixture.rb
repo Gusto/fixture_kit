@@ -2,6 +2,8 @@
 
 module FixtureKit
   class Fixture
+    include ConfigurationHelper
+
     attr_reader :name, :path
 
     def initialize(name, path)
@@ -11,11 +13,10 @@ module FixtureKit
     end
 
     def cache(force: false)
-      already_cached = @cache.exists?
-      return if already_cached && !force
+      return if @cache.exists? && !force
 
+      configuration.on_cache&.call(name)
       @cache.save
-      FixtureKit.runner.configuration.on_cache&.call(name) unless already_cached
     end
 
     def mount
