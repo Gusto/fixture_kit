@@ -74,6 +74,27 @@ RSpec.describe FixtureKit::Cache do
       expect(data["records"]).to have_key("User")
       expect(data["exposed"]).to have_key("alice")
     end
+
+    it "tracks update-only writes from sql.active_record payload names" do
+      user = User.create!(name: "Alice", email: "alice-update@example.com")
+
+      fixture_definition = FixtureKit::Definition.new do
+        user = User.find_by!(email: "alice-update@example.com")
+        user.update!(name: "Alice Updated")
+        expose(alice: user)
+      end
+
+      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_cache.save
+
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["records"]).to have_key("User")
+
+      User.delete_all
+      repository = fixture_cache.load
+      expect(repository.alice.id).to eq(user.id)
+      expect(repository.alice.name).to eq("Alice Updated")
+    end
   end
 
   describe "#load" do

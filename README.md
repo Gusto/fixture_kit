@@ -209,7 +209,7 @@ fixture "teams/sales"
 
 ## How It Works
 
-1. **Cache generation**: FixtureKit executes your definition block inside the configured isolator, subscribes to `sql.active_record` notifications to track inserted models, queries those model tables, and generates batch INSERT statements with conflict handling (`INSERT OR IGNORE` for SQLite, `ON CONFLICT DO NOTHING` for PostgreSQL, `INSERT IGNORE` for MySQL).
+1. **Cache generation**: FixtureKit executes your definition block inside the configured isolator, subscribes to `sql.active_record` notifications to track created/updated models, queries those model tables, and generates batch INSERT statements with conflict handling (`INSERT OR IGNORE` for SQLite, `ON CONFLICT DO NOTHING` for PostgreSQL, `INSERT IGNORE` for MySQL).
 
 2. **Mounting**: FixtureKit loads the cached JSON file and executes the raw SQL INSERT statements directly. No ORM instantiation, no callbacks.
 
