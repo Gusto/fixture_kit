@@ -27,7 +27,7 @@ module FixtureKit
         if raw_identifier.is_a?(String)
           raw_identifier
         else
-          FixtureKit.runner.adapter.identifier_for(raw_identifier)
+          File.join(ANONYMOUS_DIRECTORY, FixtureKit.runner.adapter.identifier_for(raw_identifier))
         end
       end
     end

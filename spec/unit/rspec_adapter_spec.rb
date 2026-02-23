@@ -76,13 +76,13 @@ RSpec.describe FixtureKit::RSpecAdapter do
   end
 
   describe "#identifier_for" do
-    it "normalizes rspec example group scope names under the anonymous directory" do
+    it "normalizes rspec example group scope names" do
       scope = Class.new
       allow(scope).to receive(:to_s).and_return("RSpec::ExampleGroups::Foo::WithFixtureKit::Hello")
 
       identifier = described_class.new.identifier_for(scope)
 
-      expect(identifier).to eq("_anonymous/foo/with_fixture_kit/hello")
+      expect(identifier).to eq("foo/with_fixture_kit/hello")
     end
   end
 end

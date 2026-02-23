@@ -188,7 +188,7 @@ Custom adapters should subclass `FixtureKit::Adapter` and implement:
 - `#identifier_for`
 
 `#execute` receives the generation block and should run it in whatever lifecycle you need.
-`#identifier_for` receives a non-string fixture identifier (for anonymous fixtures) and must return a String cache identifier.
+`#identifier_for` receives a non-string fixture identifier (for anonymous fixtures) and must return a normalized String identifier. Cache namespace/prefixing is applied by `FixtureKit::Cache`.
 
 Options passed via `config.adapter(...)` are provided to your adapter initializer as a hash and available as `options`.
 

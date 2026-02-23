@@ -22,7 +22,7 @@ module FixtureKit
     end
 
     def identifier_for(identifier)
-      File.join(Cache::ANONYMOUS_DIRECTORY, ActiveSupport::Inflector.underscore(identifier.to_s))
+      ActiveSupport::Inflector.underscore(identifier.to_s)
     end
 
     private

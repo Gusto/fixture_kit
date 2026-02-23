@@ -23,7 +23,7 @@ module FixtureKit
 
     def identifier_for(identifier)
       normalized_scope = identifier.to_s.sub(/\ARSpec::ExampleGroups::/, "")
-      File.join(Cache::ANONYMOUS_DIRECTORY, ActiveSupport::Inflector.underscore(normalized_scope))
+      ActiveSupport::Inflector.underscore(normalized_scope)
     end
 
     private

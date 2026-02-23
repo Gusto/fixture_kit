@@ -68,13 +68,13 @@ RSpec.describe FixtureKit::MinitestAdapter do
   end
 
   describe "#identifier_for" do
-    it "underscores the scope class name under the anonymous directory" do
+    it "underscores the scope class name" do
       scope = Class.new
       allow(scope).to receive(:to_s).and_return("MyFeatureTest")
 
       identifier = described_class.new.identifier_for(scope)
 
-      expect(identifier).to eq("_anonymous/my_feature_test")
+      expect(identifier).to eq("my_feature_test")
     end
   end
 end
