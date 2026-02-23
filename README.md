@@ -168,13 +168,13 @@ FixtureKit.configure do |config|
 
   # Optional callback, called right before a fixture cache is generated.
   # Called on first generation and forced regeneration.
-  # Receives the fixture identifier:
-  # - named fixtures: String (e.g. "teams/basic")
-  # - anonymous fixtures: scope class
+  # Receives the cache identifier as a String.
+  # - named fixtures: "teams/basic"
+  # - anonymous fixtures: "_anonymous/foo/with_fixture_kit/hello"
   # config.on_cache_save = ->(identifier) { puts "cached #{identifier}" }
 
   # Optional callback, called right before a fixture cache is mounted.
-  # Receives the same fixture identifier shape as on_cache_save.
+  # Receives the same String cache identifier as on_cache_save.
   # config.on_cache_mount = ->(identifier) { puts "mounted #{identifier}" }
 end
 ```
