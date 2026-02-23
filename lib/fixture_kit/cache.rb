@@ -34,7 +34,9 @@ module FixtureKit
         model = ActiveSupport::Inflector.constantize(model_name)
         connection = model.connection
         connection.disable_referential_integrity do
-          connection.send(:execute_batch, build_restore_statements(model.table_name, connection, sql), "FixtureKit Load")
+          # execute_batch is private in current supported Rails versions.
+          # This should be revisited when Rails 8.2 makes it public.
+          connection.__send__(:execute_batch, [build_delete_sql(model), sql].compact, "FixtureKit Load")
         end
       end
 
@@ -100,12 +102,8 @@ module FixtureKit
       statements_by_model
     end
 
-    def build_delete_sql(table_name, connection)
-      "DELETE FROM #{connection.quote_table_name(table_name)}"
-    end
-
-    def build_restore_statements(table_name, connection, insert_sql)
-      [build_delete_sql(table_name, connection), insert_sql].compact
+    def build_delete_sql(model)
+      "DELETE FROM #{model.quoted_table_name}"
     end
 
     def build_insert_sql(table_name, columns, rows, connection)

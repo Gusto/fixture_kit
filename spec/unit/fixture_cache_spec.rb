@@ -137,6 +137,14 @@ RSpec.describe FixtureKit::Cache do
   end
 
   describe "#load" do
+    it "documents that connection execute_batch is currently private" do
+      connection = User.connection
+
+      expect(connection.respond_to?(:execute_batch, true)).to be(true)
+      expect(connection.private_methods).to include(:execute_batch)
+      expect(connection.public_methods).not_to include(:execute_batch)
+    end
+
     it "raises when cache is missing" do
       expect do
         cache.load
