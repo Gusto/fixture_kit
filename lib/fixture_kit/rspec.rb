@@ -28,7 +28,12 @@ module FixtureKit
       #     end
       #   end
       def fixture(name = nil, &definition_block)
-        metadata[DECLARATION_METADATA_KEY] = ::RSpec.configuration.fixture_kit.register(self, name, &definition_block)
+        declaration = ::RSpec.configuration.fixture_kit.register(self, name, &definition_block)
+        metadata[DECLARATION_METADATA_KEY] = declaration
+
+        prepend_before(:context) do
+          self.class.metadata[DECLARATION_METADATA_KEY].cache
+        end
       end
     end
 
@@ -42,8 +47,8 @@ module FixtureKit
     end
 
     def self.configure!(config)
-      FixtureKit.runner.configuration.fixture_path = "spec/fixture_kit"
       config.add_setting(:fixture_kit, default: FixtureKit.runner)
+      FixtureKit.runner.configuration.fixture_path = "spec/fixture_kit"
       FixtureKit.runner.configuration.adapter(FixtureKit::RSpecAdapter)
 
       config.extend ClassMethods

@@ -42,13 +42,11 @@ module FixtureKit
       end
 
       @data ||= JSON.parse(File.read(path))
-      @data.fetch("records").each do |model_name, sql|
-        model = ActiveSupport::Inflector.constantize(model_name)
-        connection = model.connection
+      statements_by_connection(@data.fetch("records")).each do |connection, statements|
         connection.disable_referential_integrity do
           # execute_batch is private in current supported Rails versions.
           # This should be revisited when Rails 8.2 makes it public.
-          connection.__send__(:execute_batch, [build_delete_sql(model), sql].compact, "FixtureKit Load")
+          connection.__send__(:execute_batch, statements, "FixtureKit Load")
         end
       end
 
@@ -130,6 +128,16 @@ module FixtureKit
         was_array = value.is_a?(Array)
         records = Array.wrap(value).map { |record| { "model" => record.class.name, "id" => record.id } }
         hash[name] = was_array ? records : records.first
+      end
+    end
+
+    def statements_by_connection(records)
+      records.each_with_object({}) do |(model_name, sql), grouped|
+        model = ActiveSupport::Inflector.constantize(model_name)
+        connection = model.connection
+        grouped[connection] ||= []
+        grouped[connection] << build_delete_sql(model)
+        grouped[connection] << sql if sql
       end
     end
   end

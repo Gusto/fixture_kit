@@ -11,6 +11,17 @@ module FixtureKit
       def fixture(name = nil, &definition_block)
         self.fixture_kit_declaration = FixtureKit.runner.register(self, name, &definition_block)
       end
+
+      def run_suite(reporter, options = {})
+        declaration = fixture_kit_declaration
+        if declaration && !filter_runnable_methods(options).empty?
+          runner = FixtureKit.runner
+          runner.start unless runner.started?
+          declaration.cache
+        end
+
+        super
+      end
     end
 
     module InstanceMethods
@@ -31,7 +42,6 @@ module FixtureKit
         declaration = self.class.fixture_kit_declaration
         next unless declaration
 
-        FixtureKit.runner.start unless FixtureKit.runner.started?
         @_fixture_kit_repository = declaration.mount
       end
     end

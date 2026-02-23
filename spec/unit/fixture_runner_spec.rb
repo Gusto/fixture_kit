@@ -30,7 +30,7 @@ RSpec.describe FixtureKit::Runner do
   end
 
   describe "#start" do
-    it "clears all cache files before caching fixtures" do
+    it "clears all cache files at startup" do
       runner = described_class.new
       allow(FileUtils).to receive(:rm_rf)
 
@@ -74,12 +74,12 @@ RSpec.describe FixtureKit::Runner do
       )
     end
 
-    it "caches already-registered fixtures when the suite starts" do
+    it "does not cache already-registered fixtures at startup" do
       runner = described_class.new
 
       runner.start
 
-      expect(fixture).to have_received(:cache)
+      expect(fixture).not_to have_received(:cache)
     end
   end
 
@@ -93,7 +93,7 @@ RSpec.describe FixtureKit::Runner do
       expect(fixture).not_to have_received(:cache)
     end
 
-    it "caches fixtures immediately after suite start" do
+    it "does not cache fixtures immediately after suite start" do
       runner = described_class.new
       runner.start
 
@@ -103,7 +103,7 @@ RSpec.describe FixtureKit::Runner do
 
       runner.register(scope, fixture_name)
 
-      expect(teams_fixture).to have_received(:cache)
+      expect(teams_fixture).not_to have_received(:cache)
     end
 
     it "returns the fixture instance from the registry" do
