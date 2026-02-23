@@ -119,6 +119,19 @@ end
 
 When you call `fixture "name"` in an example group, FixtureKit registers that fixture with its runner.
 
+### 4. Configure Minitest
+
+```ruby
+# test/test_helper.rb
+require "fixture_kit/minitest"
+
+class ActiveSupport::TestCase
+  self.use_transactional_tests = true
+end
+```
+
+When you call `fixture "name"` in a test class, FixtureKit registers that fixture with its runner and mounts it during test setup.
+
 ## Configuration
 
 ```ruby

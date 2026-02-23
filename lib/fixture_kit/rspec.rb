@@ -37,7 +37,7 @@ module FixtureKit
       # Returns the Repository for the current example's fixture.
       # Access exposed records as methods: fixture.alice, fixture.posts
       def fixture
-        @_fixture_kit_fixture_set || raise("No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block.")
+        @_fixture_kit_repository || raise("No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block.")
       end
     end
 
@@ -51,7 +51,7 @@ module FixtureKit
       # Load declared fixtures at the beginning of each example.
       # Runs inside transactional fixtures and before user-defined before hooks.
       config.prepend_before(:example, DECLARATION_METADATA_KEY) do |example|
-        @_fixture_kit_fixture_set = example.metadata[DECLARATION_METADATA_KEY].mount
+        @_fixture_kit_repository = example.metadata[DECLARATION_METADATA_KEY].mount
       end
 
       config.append_before(:suite) do
