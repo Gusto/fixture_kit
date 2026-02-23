@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-class FixtureKitProjectManagementIntegrationTest < FixtureKitIntegrationTestCase
+class FixtureKitProjectManagementIntegrationTest < ActiveSupport::TestCase
   fixture "project_management"
 
   setup do
@@ -59,7 +59,7 @@ class FixtureKitProjectManagementIntegrationTest < FixtureKitIntegrationTestCase
   end
 end
 
-class FixtureKitNestedFixtureIntegrationTest < FixtureKitIntegrationTestCase
+class FixtureKitNestedFixtureIntegrationTest < ActiveSupport::TestCase
   fixture "teams/basic"
 
   test "loads nested fixture definitions" do

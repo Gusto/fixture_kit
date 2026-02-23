@@ -5,7 +5,7 @@ ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
 require "fileutils"
-require "fixture_kit"
+require "fixture_kit/minitest"
 
 if Rails.env.production?
   abort("The Rails environment is running in production mode!")
@@ -99,25 +99,6 @@ Minitest.after_run do
   DummyFixtureKitTestSupport.clear_fixture_cache
 end
 
-class FixtureKitIntegrationTestCase < ActiveSupport::TestCase
+class ActiveSupport::TestCase
   self.use_transactional_tests = true
-
-  class_attribute :fixture_kit_fixture, instance_accessor: false
-
-  def self.fixture(name)
-    self.fixture_kit_fixture = FixtureKit.runner.register(name)
-  end
-
-  setup do
-    FixtureKit.runner.start unless FixtureKit.runner.started?
-
-    declared_fixture = self.class.fixture_kit_fixture
-    raise "No fixture declared for this test case. Use `fixture \"name\"` in your test class." unless declared_fixture
-
-    @_fixture_kit_fixture_set = declared_fixture.mount
-  end
-
-  def fixture
-    @_fixture_kit_fixture_set || raise("No fixture declared for this test case. Use `fixture \"name\"` in your test class.")
-  end
 end
