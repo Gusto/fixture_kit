@@ -32,7 +32,12 @@ module FixtureKit
       @data ||= JSON.parse(File.read(path))
       @data.fetch("records").each do |model_name, sql|
         model = ActiveSupport::Inflector.constantize(model_name)
-        model.connection.execute(sql)
+        connection = model.connection
+        connection.disable_referential_integrity do
+          # execute_batch is private in current supported Rails versions.
+          # This should be revisited when Rails 8.2 makes it public.
+          connection.__send__(:execute_batch, [build_delete_sql(model), sql].compact, "FixtureKit Load")
+        end
       end
 
       build_repository(@data.fetch("exposed"))
@@ -90,37 +95,22 @@ module FixtureKit
           rows << "(#{row_values.join(", ")})"
         end
 
-        next if rows.empty?
-
-        sql = build_insert_sql(model.table_name, columns, rows, model.connection)
+        sql = rows.empty? ? nil : build_insert_sql(model.table_name, columns, rows, model.connection)
         statements_by_model[model.name] = sql
       end
 
       statements_by_model
     end
 
+    def build_delete_sql(model)
+      "DELETE FROM #{model.quoted_table_name}"
+    end
+
     def build_insert_sql(table_name, columns, rows, connection)
       quoted_table = connection.quote_table_name(table_name)
       quoted_columns = columns.map { |c| connection.quote_column_name(c) }
 
-      sql = "INSERT INTO #{quoted_table} (#{quoted_columns.join(", ")}) VALUES #{rows.join(", ")}"
-
-      add_conflict_handling(sql, connection)
-    end
-
-    def add_conflict_handling(sql, connection)
-      adapter_name = connection.adapter_name.downcase
-
-      case adapter_name
-      when /sqlite/
-        sql.sub(/\AINSERT INTO/i, "INSERT OR IGNORE INTO")
-      when /postgresql/, /postgis/
-        "#{sql} ON CONFLICT DO NOTHING"
-      when /mysql/, /trilogy/
-        sql.sub(/\AINSERT INTO/i, "INSERT IGNORE INTO")
-      else
-        sql
-      end
+      "INSERT INTO #{quoted_table} (#{quoted_columns.join(", ")}) VALUES #{rows.join(", ")}"
     end
 
     def build_exposed_mapping(exposed)

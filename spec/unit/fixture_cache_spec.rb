@@ -74,9 +74,77 @@ RSpec.describe FixtureKit::Cache do
       expect(data["records"]).to have_key("User")
       expect(data["exposed"]).to have_key("alice")
     end
+
+    it "tracks update-only writes from sql.active_record payload names" do
+      user = User.create!(name: "Alice", email: "alice-update@example.com")
+
+      fixture_definition = FixtureKit::Definition.new do
+        user = User.find_by!(email: "alice-update@example.com")
+        user.update!(name: "Alice Updated")
+        expose(alice: user)
+      end
+
+      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_cache.save
+
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["records"]).to have_key("User")
+
+      User.delete_all
+      repository = fixture_cache.load
+      expect(repository.alice.id).to eq(user.id)
+      expect(repository.alice.name).to eq("Alice Updated")
+    end
+
+    it "tracks delete-only writes from sql.active_record payload names" do
+      User.create!(name: "Alice", email: "alice-delete@example.com")
+      User.create!(name: "Bob", email: "bob-delete@example.com")
+
+      fixture_definition = FixtureKit::Definition.new do
+        User.find_by!(email: "bob-delete@example.com").destroy!
+        expose(alice: User.find_by!(email: "alice-delete@example.com"))
+      end
+
+      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_cache.save
+
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["records"]).to have_key("User")
+
+      User.delete_all
+      repository = fixture_cache.load
+      expect(User.count).to eq(1)
+      expect(repository.alice.email).to eq("alice-delete@example.com")
+    end
+
+    it "stores nil insert sql when a changed table becomes empty" do
+      User.create!(name: "Alice", email: "alice-empty@example.com")
+
+      fixture_definition = FixtureKit::Definition.new do
+        User.find_by!(email: "alice-empty@example.com").destroy!
+      end
+
+      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_cache.save
+
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["records"]["User"]).to be_nil
+
+      User.create!(name: "Temporary", email: "temporary@example.com")
+      fixture_cache.load
+      expect(User.count).to eq(0)
+    end
   end
 
   describe "#load" do
+    it "documents that connection execute_batch is currently private" do
+      connection = User.connection
+
+      expect(connection.respond_to?(:execute_batch, true)).to be(true)
+      expect(connection.private_methods).to include(:execute_batch)
+      expect(connection.public_methods).not_to include(:execute_batch)
+    end
+
     it "raises when cache is missing" do
       expect do
         cache.load

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "json"
 
 class FixtureKitProjectManagementIntegrationTest < ActiveSupport::TestCase
   fixture "project_management"
@@ -66,5 +67,21 @@ class FixtureKitNestedFixtureIntegrationTest < ActiveSupport::TestCase
     assert_equal "Alice", fixture.alice.name
     assert_equal "Bob", fixture.bob.name
     puts "FKIT_ASSERT:NESTED_FIXTURE"
+  end
+end
+
+class FixtureKitQueryEventCoverageIntegrationTest < ActiveSupport::TestCase
+  fixture "query_type_events"
+
+  test "captures all supported write event types for table dumping" do
+    cache_file = File.join(FixtureKit.runner.configuration.cache_path, "query_type_events.json")
+    cache_data = JSON.parse(File.read(cache_file))
+
+    assert_includes cache_data.fetch("records").keys, "User"
+    assert_includes cache_data.fetch("records").keys, "Project"
+    assert_includes cache_data.fetch("records").keys, "Task"
+    assert_includes cache_data.fetch("records").keys, "Comment"
+    assert_includes cache_data.fetch("records").keys, "ActivityLog"
+    puts "FKIT_ASSERT:QUERY_TYPES_CAPTURED"
   end
 end
