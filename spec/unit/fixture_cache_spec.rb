@@ -95,6 +95,47 @@ RSpec.describe FixtureKit::Cache do
       expect(repository.alice.id).to eq(user.id)
       expect(repository.alice.name).to eq("Alice Updated")
     end
+
+    it "tracks delete-only writes from sql.active_record payload names" do
+      User.create!(name: "Alice", email: "alice-delete@example.com")
+      User.create!(name: "Bob", email: "bob-delete@example.com")
+
+      fixture_definition = FixtureKit::Definition.new do
+        User.find_by!(email: "bob-delete@example.com").destroy!
+        expose(alice: User.find_by!(email: "alice-delete@example.com"))
+      end
+
+      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_cache.save
+
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["records"]).to have_key("User")
+      expect(data["records"]["User"]).not_to include("IGNORE")
+      expect(data["records"]["User"]).not_to include("ON CONFLICT")
+
+      User.delete_all
+      repository = fixture_cache.load
+      expect(User.count).to eq(1)
+      expect(repository.alice.email).to eq("alice-delete@example.com")
+    end
+
+    it "stores nil insert sql when a changed table becomes empty" do
+      User.create!(name: "Alice", email: "alice-empty@example.com")
+
+      fixture_definition = FixtureKit::Definition.new do
+        User.find_by!(email: "alice-empty@example.com").destroy!
+      end
+
+      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_cache.save
+
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["records"]["User"]).to be_nil
+
+      User.create!(name: "Temporary", email: "temporary@example.com")
+      fixture_cache.load
+      expect(User.count).to eq(0)
+    end
   end
 
   describe "#load" do
