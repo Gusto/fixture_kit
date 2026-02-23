@@ -21,7 +21,7 @@ module FixtureKit
 
     def self.configure!(test_case)
       FixtureKit.runner.configuration.fixture_path = "test/fixture_kit"
-      FixtureKit.runner.configuration.isolator = FixtureKit::MinitestIsolator
+      FixtureKit.runner.configuration.adapter(FixtureKit::MinitestAdapter)
 
       test_case.class_attribute DECLARATION_CLASS_ATTRIBUTE, instance_accessor: false
       test_case.extend ClassMethods

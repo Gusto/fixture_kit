@@ -11,7 +11,7 @@ module FixtureKit
     def initialize
       @configuration = Configuration.new
       @registry = Registry.new
-      @isolator = nil
+      @adapter = nil
       @started = false
     end
 
@@ -29,8 +29,8 @@ module FixtureKit
       registry.fixtures.each(&:cache)
     end
 
-    def isolator
-      @isolator ||= configuration.isolator.new
+    def adapter
+      @adapter ||= configuration.adapter.new(configuration.adapter_options)
     end
 
     def started?

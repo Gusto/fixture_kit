@@ -27,8 +27,7 @@ module FixtureKit
         if raw_identifier.is_a?(String)
           raw_identifier
         else
-          normalized_scope = raw_identifier.to_s.sub(/\ARSpec::ExampleGroups::/, "")
-          File.join(ANONYMOUS_DIRECTORY, ActiveSupport::Inflector.underscore(normalized_scope))
+          FixtureKit.runner.adapter.identifier_for(raw_identifier)
         end
       end
     end
@@ -57,7 +56,7 @@ module FixtureKit
     end
 
     def save
-      FixtureKit.runner.isolator.run do
+      FixtureKit.runner.adapter.execute do
         models = SqlSubscriber.capture do
           fixture.definition.evaluate
         end

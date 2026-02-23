@@ -12,14 +12,19 @@ RSpec.describe FixtureKit::Cache do
     FixtureKit::Runner.new.tap do |runner|
       runner.configuration.cache_path = cache_path
       runner.configuration.fixture_path = Rails.root.join("fixture_kit").to_s
-      runner.configuration.isolator = pass_through_isolator
+      runner.configuration.adapter(pass_through_adapter)
     end
   end
 
-  let(:pass_through_isolator) do
-    Class.new do
-      def run(&block)
+  let(:pass_through_adapter) do
+    Class.new(FixtureKit::Adapter) do
+      def execute(&block)
         block.call
+      end
+
+      def identifier_for(identifier)
+        normalized_scope = identifier.to_s.sub(/\ARSpec::ExampleGroups::/, "")
+        File.join(FixtureKit::Cache::ANONYMOUS_DIRECTORY, ActiveSupport::Inflector.underscore(normalized_scope))
       end
     end
   end

@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
+require "active_support/inflector"
+
 module FixtureKit
-  class RSpecIsolator < FixtureKit::Isolator
-    def run(&block)
+  class RSpecAdapter < FixtureKit::Adapter
+    def execute(&block)
       previous_example = ::RSpec.current_example
       previous_scope = ::RSpec.current_scope
       example_group = build_example_group
@@ -17,6 +19,11 @@ module FixtureKit
         end
 
       raise example.exception unless succeeded
+    end
+
+    def identifier_for(identifier)
+      normalized_scope = identifier.to_s.sub(/\ARSpec::ExampleGroups::/, "")
+      File.join(Cache::ANONYMOUS_DIRECTORY, ActiveSupport::Inflector.underscore(normalized_scope))
     end
 
     private

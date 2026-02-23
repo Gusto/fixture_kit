@@ -21,9 +21,9 @@ module FixtureKit
   autoload :SqlSubscriber, File.expand_path("fixture_kit/sql_subscriber", __dir__)
   autoload :Cache,         File.expand_path("fixture_kit/cache", __dir__)
   autoload :Runner,        File.expand_path("fixture_kit/runner", __dir__)
-  autoload :Isolator,      File.expand_path("fixture_kit/isolator", __dir__)
-  autoload :MinitestIsolator, File.expand_path("fixture_kit/isolators/minitest_isolator", __dir__)
-  autoload :RSpecIsolator, File.expand_path("fixture_kit/isolators/rspec_isolator", __dir__)
+  autoload :Adapter,       File.expand_path("fixture_kit/adapter", __dir__)
+  autoload :MinitestAdapter, File.expand_path("fixture_kit/adapters/minitest_adapter", __dir__)
+  autoload :RSpecAdapter,  File.expand_path("fixture_kit/adapters/rspec_adapter", __dir__)
 
   extend Singleton
 end

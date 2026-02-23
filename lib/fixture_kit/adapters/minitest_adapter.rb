@@ -2,12 +2,13 @@
 
 require "active_support/test_case"
 require "active_record/fixtures"
+require "active_support/inflector"
 
 module FixtureKit
-  class MinitestIsolator < FixtureKit::Isolator
+  class MinitestAdapter < FixtureKit::Adapter
     TEST_NAME = "fixture kit cache pregeneration"
 
-    def run(&block)
+    def execute(&block)
       test_class = build_test_class
       test_method = test_class.test(TEST_NAME) do
         block.call
@@ -18,6 +19,10 @@ module FixtureKit
       return if result.passed?
 
       raise result.failures.first.error
+    end
+
+    def identifier_for(identifier)
+      File.join(Cache::ANONYMOUS_DIRECTORY, ActiveSupport::Inflector.underscore(identifier.to_s))
     end
 
     private

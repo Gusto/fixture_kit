@@ -13,19 +13,19 @@ RSpec.describe FixtureKit::Runner do
     allow(registry).to receive(:add).and_return(fixture)
   end
 
-  describe "#isolator" do
-    it "instantiates the configured isolator once and memoizes it" do
+  describe "#adapter" do
+    it "instantiates the configured adapter once and memoizes it" do
       runner = described_class.new
-      isolator_instance = instance_double(FixtureKit::MinitestIsolator)
-      isolator_class = class_double(FixtureKit::MinitestIsolator, new: isolator_instance)
-      runner.configuration.isolator = isolator_class
+      adapter_instance = instance_double(FixtureKit::MinitestAdapter)
+      adapter_class = class_double(FixtureKit::MinitestAdapter, new: adapter_instance)
+      runner.configuration.adapter(adapter_class, option1: "value1")
 
-      first_isolator = runner.isolator
-      second_isolator = runner.isolator
+      first_adapter = runner.adapter
+      second_adapter = runner.adapter
 
-      expect(first_isolator).to equal(isolator_instance)
-      expect(second_isolator).to equal(isolator_instance)
-      expect(isolator_class).to have_received(:new).once
+      expect(first_adapter).to equal(adapter_instance)
+      expect(second_adapter).to equal(adapter_instance)
+      expect(adapter_class).to have_received(:new).with(option1: "value1").once
     end
   end
 

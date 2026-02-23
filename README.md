@@ -162,9 +162,10 @@ FixtureKit.configure do |config|
   # Where cache files are stored (default: tmp/cache/fixture_kit)
   config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
 
-  # Wrapper used to isolate generation work (default: FixtureKit::MinitestIsolator)
-  # config.isolator = FixtureKit::MinitestIsolator
-  # config.isolator = FixtureKit::RSpecIsolator
+  # Adapter used to isolate generation work (default: FixtureKit::MinitestAdapter)
+  # config.adapter(FixtureKit::MinitestAdapter)
+  # config.adapter(FixtureKit::RSpecAdapter)
+  # config.adapter(CustomAdapter, option1: "value1")
 
   # Optional callback, called right before a fixture cache is generated.
   # Called on first generation and forced regeneration.
@@ -179,12 +180,16 @@ FixtureKit.configure do |config|
 end
 ```
 
-Custom isolators should subclass `FixtureKit::Isolator` and implement `#run`.
-`#run` receives the generation block and should execute it in whatever lifecycle you need.
+Custom adapters should subclass `FixtureKit::Adapter` and implement:
+- `#execute`
+- `#identifier_for`
 
-By default, FixtureKit uses `FixtureKit::MinitestIsolator`, which runs generation inside an internal `ActiveSupport::TestCase` and removes that harness case from minitest runnables.
+`#execute` receives the generation block and should run it in whatever lifecycle you need.
+`#identifier_for` receives a non-string fixture identifier (for anonymous fixtures) and must return a String cache identifier.
 
-When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpecIsolator`. It runs generation inside an internal RSpec example, and uses a null reporter so harness runs do not count toward suite example totals.
+By default, FixtureKit uses `FixtureKit::MinitestAdapter`, which runs generation inside an internal `ActiveSupport::TestCase` and removes that harness case from minitest runnables.
+
+When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpecAdapter`. It runs generation inside an internal RSpec example, and uses a null reporter so harness runs do not count toward suite example totals.
 
 ## Lifecycle
 
@@ -247,7 +252,7 @@ Anonymous fixture caches are written under the `_anonymous/` directory inside `c
 
 ## How It Works
 
-1. **Cache generation**: FixtureKit executes your definition block inside the configured isolator, subscribes to `sql.active_record` notifications to track created/updated/deleted models, queries those model tables, and caches SQL statements for current table contents.
+1. **Cache generation**: FixtureKit executes your definition block inside the configured adapter, subscribes to `sql.active_record` notifications to track created/updated/deleted models, queries those model tables, and caches SQL statements for current table contents.
 
 2. **Mounting**: FixtureKit loads the cached JSON file, clears each tracked table, and executes the raw SQL INSERT statements directly. No ORM instantiation, no callbacks.
 

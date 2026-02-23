@@ -4,14 +4,15 @@ module FixtureKit
   class Configuration
     attr_writer :fixture_path
     attr_writer :cache_path
-    attr_accessor :isolator
     attr_accessor :on_cache_save
     attr_accessor :on_cache_mount
+    attr_reader :adapter_options
 
     def initialize
       @fixture_path = "fixture_kit"
       @cache_path = nil
-      @isolator = FixtureKit::MinitestIsolator
+      @adapter_class = FixtureKit::MinitestAdapter
+      @adapter_options = {}
       @on_cache_save = nil
       @on_cache_mount = nil
     end
@@ -22,6 +23,13 @@ module FixtureKit
 
     def cache_path
       @cache_path ||= detect_cache_path
+    end
+
+    def adapter(adapter_class = nil, **options)
+      return @adapter_class if adapter_class.nil? && options.empty?
+
+      @adapter_class = adapter_class
+      @adapter_options = options
     end
 
     private

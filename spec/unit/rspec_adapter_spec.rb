@@ -9,12 +9,12 @@ RSpec.configure do |config|
   end
 end
 
-RSpec.describe FixtureKit::RSpecIsolator do
-  describe ".run" do
+RSpec.describe FixtureKit::RSpecAdapter do
+  describe "#execute" do
     it "runs inside an isolated RSpec example context" do
       harness_example = nil
 
-      described_class.run do
+      described_class.new.execute do
         harness_example = RSpec.current_example
       end
 
@@ -25,7 +25,7 @@ RSpec.describe FixtureKit::RSpecIsolator do
     it "runs global before hooks during harness execution" do
       hook_runs_before = $fixture_kit_harness_hook_runs.to_i
 
-      described_class.run { nil }
+      described_class.new.execute { nil }
 
       expect($fixture_kit_harness_hook_runs).to eq(hook_runs_before + 1)
     end
@@ -33,7 +33,7 @@ RSpec.describe FixtureKit::RSpecIsolator do
     it "does not add harness runs to suite reporter example stats" do
       reporter_count_before = RSpec.configuration.reporter.examples.size
 
-      described_class.run { nil }
+      described_class.new.execute { nil }
 
       expect(RSpec.configuration.reporter.examples.size).to eq(reporter_count_before)
     end
@@ -42,7 +42,7 @@ RSpec.describe FixtureKit::RSpecIsolator do
       outer_example = RSpec.current_example
       outer_scope = RSpec.current_scope
 
-      described_class.run do
+      described_class.new.execute do
         expect(RSpec.current_example).not_to eq(outer_example)
       end
 
@@ -52,13 +52,13 @@ RSpec.describe FixtureKit::RSpecIsolator do
 
     it "re-raises errors from the harness block" do
       expect do
-        described_class.run do
+        described_class.new.execute do
           raise "harness exploded"
         end
       end.to raise_error(RuntimeError, "harness exploded")
     end
 
-    it "re-raises example.exception when run returns false" do
+    it "re-raises example.exception when execute returns false" do
       example_group = double("example_group")
       example = instance_double(RSpec::Core::Example)
       instance = Object.new
@@ -70,8 +70,19 @@ RSpec.describe FixtureKit::RSpecIsolator do
       allow(example).to receive(:run).with(instance, RSpec::Core::NullReporter).and_return(false)
       allow(example).to receive(:exception).and_return(failure)
 
-      expect { described_class.run { nil } }
+      expect { described_class.new.execute { nil } }
         .to raise_error(RuntimeError, "harness exploded")
+    end
+  end
+
+  describe "#identifier_for" do
+    it "normalizes rspec example group scope names under the anonymous directory" do
+      scope = Class.new
+      allow(scope).to receive(:to_s).and_return("RSpec::ExampleGroups::Foo::WithFixtureKit::Hello")
+
+      identifier = described_class.new.identifier_for(scope)
+
+      expect(identifier).to eq("_anonymous/foo/with_fixture_kit/hello")
     end
   end
 end

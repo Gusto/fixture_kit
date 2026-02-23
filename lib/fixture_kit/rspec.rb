@@ -44,7 +44,7 @@ module FixtureKit
     def self.configure!(config)
       FixtureKit.runner.configuration.fixture_path = "spec/fixture_kit"
       config.add_setting(:fixture_kit, default: FixtureKit.runner)
-      FixtureKit.runner.configuration.isolator = FixtureKit::RSpecIsolator
+      FixtureKit.runner.configuration.adapter(FixtureKit::RSpecAdapter)
 
       config.extend ClassMethods
       config.include InstanceMethods, DECLARATION_METADATA_KEY

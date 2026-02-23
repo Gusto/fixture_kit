@@ -16,17 +16,18 @@ RSpec.describe FixtureKit::Configuration do
     end
   end
 
-  describe "#isolator" do
-    it "defaults to FixtureKit::MinitestIsolator" do
-      expect(described_class.new.isolator).to eq(FixtureKit::MinitestIsolator)
+  describe "#adapter" do
+    it "defaults to FixtureKit::MinitestAdapter" do
+      expect(described_class.new.adapter).to eq(FixtureKit::MinitestAdapter)
     end
 
-    it "returns an explicitly configured class" do
-      custom_isolator_class = Class.new(FixtureKit::Isolator)
+    it "returns an explicitly configured class and options" do
+      custom_adapter_class = Class.new(FixtureKit::Adapter)
       configuration = described_class.new
-      configuration.isolator = custom_isolator_class
+      configuration.adapter(custom_adapter_class, option1: "value1")
 
-      expect(configuration.isolator).to eq(custom_isolator_class)
+      expect(configuration.adapter).to eq(custom_adapter_class)
+      expect(configuration.adapter_options).to eq(option1: "value1")
     end
   end
 
