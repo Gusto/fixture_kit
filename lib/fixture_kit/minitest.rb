@@ -9,6 +9,10 @@ module FixtureKit
 
     module ClassMethods
       def fixture(name)
+        if self.fixture_kit_declaration
+          raise FixtureKit::MultipleFixtures, "cannot load multiple fixtures in the same class"
+        end
+
         self.fixture_kit_declaration = FixtureKit.runner.register(name)
       end
     end
