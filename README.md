@@ -137,7 +137,10 @@ When you call `fixture "name"` in a test class, FixtureKit registers that fixtur
 ```ruby
 # spec/support/fixture_kit.rb
 FixtureKit.configure do |config|
-  # Where fixture definitions live (default: spec/fixture_kit)
+  # Where fixture definitions live.
+  # Default is auto-detected:
+  # - spec/fixture_kit when RSpec is loaded
+  # - test/fixture_kit when Minitest is loaded
   config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
 
   # Where cache files are stored (default: tmp/cache/fixture_kit)
@@ -147,7 +150,8 @@ FixtureKit.configure do |config|
   # config.isolator = FixtureKit::MinitestIsolator
   # config.isolator = FixtureKit::RSpecIsolator
 
-  # Optional callback, called whenever a fixture cache is generated.
+  # Optional callback, called right before a fixture cache is generated.
+  # Called on first generation and forced regeneration.
   # Receives the fixture name as a String.
   # config.on_cache = ->(fixture_name) { puts "cached #{fixture_name}" }
 end
@@ -164,18 +168,21 @@ When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpecIsolator`. It 
 
 Fixture generation is managed by `FixtureKit::Runner`.
 
-With `fixture_kit/rspec`:
-
-1. `fixture "name"` registers the fixture with the runner during spec file load.
-2. In `before(:suite)`, runner `start`:
+1. Calling `fixture "name"` registers the fixture with the runner.
+2. Runner `start`:
    - clears `cache_path` (unless preserve-cache is enabled),
    - generates caches for all already-registered fixtures.
-3. If new spec files are loaded later (for example, queue-mode CI runners), newly registered fixtures are generated immediately because the runner has already started.
-4. At example runtime, fixture mounting loads from cache.
+3. If new tests are loaded after start (for example, queue-mode CI runners), newly registered fixtures are cached immediately.
+4. At test runtime, `fixture` mounts from cache and returns a `Repository`.
+
+When runner start happens:
+
+- `fixture_kit/rspec`: in `before(:suite)`.
+- `fixture_kit/minitest`: lazily during test setup for the first test class that declares `fixture`.
 
 ### Preserving Cache Locally
 
-If you want to skip cache clearing at suite start (e.g., to reuse caches across test runs during local development), set the `FIXTURE_KIT_PRESERVE_CACHE` environment variable:
+If you want to skip cache clearing when the runner starts (e.g., to reuse caches across test runs during local development), set the `FIXTURE_KIT_PRESERVE_CACHE` environment variable:
 
 ```bash
 FIXTURE_KIT_PRESERVE_CACHE=1 bundle exec rspec
@@ -208,7 +215,7 @@ fixture "teams/sales"
 
 3. **Repository build**: FixtureKit resolves exposed records by model + id and returns a `Repository` for method-based access.
 
-4. **Transaction isolation**: RSpec's `use_transactional_fixtures` wraps each test in a transaction that rolls back, so data doesn't persist between tests.
+4. **Transaction isolation**: Use framework transactions (`use_transactional_fixtures` in RSpec, `use_transactional_tests` in Minitest) so test writes roll back and cached data can be reused safely between tests.
 
 ### Cache Format
 
