@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "rails_helper"
+require "json"
 
 RSpec.describe "FixtureKit integration" do
   describe "fixture preload timing" do
@@ -63,6 +64,18 @@ RSpec.describe "FixtureKit integration" do
       expect(fixture.alice.name).to eq("Alice")
       expect(fixture.bob.name).to eq("Bob")
       puts "FKIT_ASSERT:NESTED_FIXTURE"
+    end
+  end
+
+  describe "query event coverage" do
+    fixture "query_type_events"
+
+    it "captures all supported write event types for table dumping" do
+      cache_file = File.join(FixtureKit.runner.configuration.cache_path, "query_type_events.json")
+      cache_data = JSON.parse(File.read(cache_file))
+
+      expect(cache_data.fetch("records").keys).to include("User", "Project", "Task", "Comment", "ActivityLog")
+      puts "FKIT_ASSERT:QUERY_TYPES_CAPTURED"
     end
   end
 

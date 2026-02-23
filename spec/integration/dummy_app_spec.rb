@@ -6,7 +6,7 @@ RSpec.describe "Dummy app integration" do
   DUMMY_ROOT = File.expand_path("../dummy", __dir__)
   DUMMY_RSPEC_PATH = "spec/integration/fixture_kit_integration.rb"
   DUMMY_MINITEST_PATH = "test/integration/fixture_kit_integration_test.rb"
-  EXPECTED_DUMMY_TEST_COUNT = 8
+  EXPECTED_DUMMY_TEST_COUNT = 9
   INTEGRATION_FRAMEWORK = ENV.fetch("FIXTURE_KIT_INTEGRATION_FRAMEWORK", "rspec")
 
   def run_dummy_tests
@@ -63,6 +63,7 @@ RSpec.describe "Dummy app integration" do
       "FKIT_ASSERT:ARRAY_EXPOSURE",
       "FKIT_ASSERT:CACHE_WRITTEN",
       "FKIT_ASSERT:NESTED_FIXTURE",
+      "FKIT_ASSERT:QUERY_TYPES_CAPTURED",
       "FKIT_ASSERT:ROLLBACK_FIRST_EXAMPLE",
       "FKIT_ASSERT:ROLLBACK_SECOND_EXAMPLE"
     ]
