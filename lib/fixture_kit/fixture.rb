@@ -15,7 +15,7 @@ module FixtureKit
     def cache(force: false)
       return if @cache.exists? && !force
 
-      configuration.on_cache_save&.call(identifier)
+      configuration.on_cache_save&.call(@cache.identifier)
       @cache.save
     end
 
@@ -24,7 +24,7 @@ module FixtureKit
         raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{identifier}'"
       end
 
-      configuration.on_cache_mount&.call(identifier)
+      configuration.on_cache_mount&.call(@cache.identifier)
       @cache.load
     end
   end
