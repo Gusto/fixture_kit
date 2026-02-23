@@ -4,37 +4,28 @@ module FixtureKit
   class Fixture
     include ConfigurationHelper
 
-    attr_reader :name, :path
+    attr_reader :identifier, :definition
 
-    def initialize(name, path)
-      @name = name
-      @path = path
-      @cache = Cache.new(self, definition)
+    def initialize(identifier, definition)
+      @identifier = identifier
+      @definition = definition
+      @cache = Cache.new(self)
     end
 
     def cache(force: false)
       return if @cache.exists? && !force
 
-      configuration.on_cache&.call(name)
+      configuration.on_cache_save&.call(@cache.identifier)
       @cache.save
     end
 
     def mount
       unless @cache.exists?
-        raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{name}'"
+        raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{identifier}'"
       end
 
+      configuration.on_cache_mount&.call(@cache.identifier)
       @cache.load
-    end
-
-    private
-
-    def definition
-      @definition ||= begin
-        definition = eval(File.read(@path), TOPLEVEL_BINDING.dup, @path)
-        raise FixtureKit::FixtureDefinitionNotFound, "Could not find fixture definition at '#{@path}'" unless definition.is_a?(Definition)
-        definition
-      end
     end
   end
 end

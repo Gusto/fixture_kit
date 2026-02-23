@@ -11,7 +11,7 @@ require "fixture_kit"
 
 # Helper to load fixtures in tests (wraps internal API)
 def load_fixture(name)
-  FixtureKit.runner.register(name).mount
+  FixtureKit.runner.register(Object.new, name).mount
 end
 
 # Helper to clear fixture cache in tests

@@ -5,9 +5,9 @@ require "spec_helper"
 RSpec.describe FixtureKit::Cache do
   let(:cache_path) { Rails.root.join("tmp/cache/fixture_kit_test").to_s }
   let(:fixture_name) { "test_fixture" }
-  let(:fixture) { instance_double(FixtureKit::Fixture, name: fixture_name) }
   let(:definition) { instance_double(FixtureKit::Definition, evaluate: nil, exposed: {}) }
-  let(:cache) { described_class.new(fixture, definition) }
+  let(:fixture) { instance_double(FixtureKit::Fixture, identifier: fixture_name, definition: definition) }
+  let(:cache) { described_class.new(fixture) }
   let(:runner) do
     FixtureKit::Runner.new.tap do |runner|
       runner.configuration.cache_path = cache_path
@@ -39,10 +39,49 @@ RSpec.describe FixtureKit::Cache do
     end
 
     it "handles nested fixture names" do
-      nested_fixture = instance_double(FixtureKit::Fixture, name: "teams/basic")
-      nested_cache = described_class.new(nested_fixture, definition)
+      nested_fixture = instance_double(FixtureKit::Fixture, identifier: "teams/basic", definition: definition)
+      nested_cache = described_class.new(nested_fixture)
 
       expect(nested_cache.path).to eq(File.join(cache_path, "teams/basic.json"))
+    end
+
+    it "normalizes class identifiers for anonymous fixtures" do
+      anonymous_scope = Class.new
+      allow(anonymous_scope).to receive(:to_s).and_return("RSpec::ExampleGroups::Foo::WithFixtureKit::Hello")
+      anonymous_definition = FixtureKit::Definition.new {}
+      anonymous_fixture = instance_double(FixtureKit::Fixture, identifier: anonymous_scope, definition: anonymous_definition)
+      anonymous_cache = described_class.new(anonymous_fixture)
+
+      expect(anonymous_cache.path).to eq(File.join(cache_path, "_anonymous/foo/with_fixture_kit/hello.json"))
+    end
+  end
+
+  describe "#identifier" do
+    it "returns the string identifier for named fixtures" do
+      expect(cache.identifier).to eq("test_fixture")
+    end
+
+    it "normalizes scope-class identifiers for anonymous fixtures" do
+      anonymous_scope = Class.new
+      allow(anonymous_scope).to receive(:to_s).and_return("RSpec::ExampleGroups::Foo::WithFixtureKit::Hello")
+      anonymous_definition = FixtureKit::Definition.new {}
+      anonymous_fixture = instance_double(FixtureKit::Fixture, identifier: anonymous_scope, definition: anonymous_definition)
+      anonymous_cache = described_class.new(anonymous_fixture)
+
+      expect(anonymous_cache.identifier).to eq("_anonymous/foo/with_fixture_kit/hello")
+    end
+
+    it "memoizes normalized anonymous identifiers" do
+      anonymous_scope = Class.new
+      allow(anonymous_scope).to receive(:to_s).and_return("RSpec::ExampleGroups::Foo::WithFixtureKit::Hello")
+      anonymous_definition = FixtureKit::Definition.new {}
+      anonymous_fixture = instance_double(FixtureKit::Fixture, identifier: anonymous_scope, definition: anonymous_definition)
+      anonymous_cache = described_class.new(anonymous_fixture)
+
+      anonymous_cache.identifier
+      anonymous_cache.identifier
+
+      expect(anonymous_scope).to have_received(:to_s).once
     end
   end
 
@@ -65,7 +104,8 @@ RSpec.describe FixtureKit::Cache do
         alice = User.create!(name: "Alice", email: "alice-cache@example.com")
         expose(alice: alice)
       end
-      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_double = instance_double(FixtureKit::Fixture, identifier: fixture_name, definition: fixture_definition)
+      fixture_cache = described_class.new(fixture_double)
 
       fixture_cache.save
 
@@ -84,7 +124,8 @@ RSpec.describe FixtureKit::Cache do
         expose(alice: user)
       end
 
-      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_double = instance_double(FixtureKit::Fixture, identifier: fixture_name, definition: fixture_definition)
+      fixture_cache = described_class.new(fixture_double)
       fixture_cache.save
 
       data = JSON.parse(File.read(fixture_cache.path))
@@ -105,7 +146,8 @@ RSpec.describe FixtureKit::Cache do
         expose(alice: User.find_by!(email: "alice-delete@example.com"))
       end
 
-      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_double = instance_double(FixtureKit::Fixture, identifier: fixture_name, definition: fixture_definition)
+      fixture_cache = described_class.new(fixture_double)
       fixture_cache.save
 
       data = JSON.parse(File.read(fixture_cache.path))
@@ -124,7 +166,8 @@ RSpec.describe FixtureKit::Cache do
         User.find_by!(email: "alice-empty@example.com").destroy!
       end
 
-      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_double = instance_double(FixtureKit::Fixture, identifier: fixture_name, definition: fixture_definition)
+      fixture_cache = described_class.new(fixture_double)
       fixture_cache.save
 
       data = JSON.parse(File.read(fixture_cache.path))
@@ -156,7 +199,8 @@ RSpec.describe FixtureKit::Cache do
         alice = User.create!(name: "Alice", email: "alice-replay@example.com")
         expose(alice: alice)
       end
-      fixture_cache = described_class.new(fixture, fixture_definition)
+      fixture_double = instance_double(FixtureKit::Fixture, identifier: fixture_name, definition: fixture_definition)
+      fixture_cache = described_class.new(fixture_double)
 
       fixture_cache.save
 

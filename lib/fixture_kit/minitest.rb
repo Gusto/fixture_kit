@@ -8,12 +8,8 @@ module FixtureKit
     DECLARATION_CLASS_ATTRIBUTE = :fixture_kit_declaration
 
     module ClassMethods
-      def fixture(name)
-        if self.fixture_kit_declaration
-          raise FixtureKit::MultipleFixtures, "cannot load multiple fixtures in the same class"
-        end
-
-        self.fixture_kit_declaration = FixtureKit.runner.register(name)
+      def fixture(name = nil, &definition_block)
+        self.fixture_kit_declaration = FixtureKit.runner.register(self, name, &definition_block)
       end
     end
 

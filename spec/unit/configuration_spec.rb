@@ -30,17 +30,31 @@ RSpec.describe FixtureKit::Configuration do
     end
   end
 
-  describe "#on_cache" do
+  describe "#on_cache_save" do
     it "defaults to nil" do
-      expect(described_class.new.on_cache).to be_nil
+      expect(described_class.new.on_cache_save).to be_nil
     end
 
     it "returns an explicitly configured proc" do
       callback = proc {}
       configuration = described_class.new
-      configuration.on_cache = callback
+      configuration.on_cache_save = callback
 
-      expect(configuration.on_cache).to eq(callback)
+      expect(configuration.on_cache_save).to eq(callback)
+    end
+  end
+
+  describe "#on_cache_mount" do
+    it "defaults to nil" do
+      expect(described_class.new.on_cache_mount).to be_nil
+    end
+
+    it "returns an explicitly configured proc" do
+      callback = proc {}
+      configuration = described_class.new
+      configuration.on_cache_mount = callback
+
+      expect(configuration.on_cache_mount).to eq(callback)
     end
   end
 end

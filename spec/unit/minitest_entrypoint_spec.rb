@@ -11,31 +11,31 @@ RSpec.describe FixtureKit::Minitest::ClassMethods do
   end
 
   describe "#fixture" do
-    it "raises when called twice in the same test class" do
+    it "registers named fixtures with the current test class as scope" do
       test_case = build_test_case
 
       test_case.fixture("project_management")
 
-      expect do
-        test_case.fixture("teams/basic")
-      end.to raise_error(
-        FixtureKit::MultipleFixtures,
-        "cannot load multiple fixtures in the same class"
-      )
+      expect(runner).to have_received(:register).with(test_case, "project_management")
     end
 
-    it "raises in subclasses when a parent class already declares a fixture" do
-      parent_test_case = build_test_case
-      parent_test_case.fixture("project_management")
+    it "registers anonymous fixtures with the current test class as scope" do
+      test_case = build_test_case
 
+      test_case.fixture { expose(example: "record") }
+
+      expect(runner).to have_received(:register).with(test_case, nil)
+    end
+
+    it "allows subclasses to register their own fixtures" do
+      parent_test_case = build_test_case
       child_test_case = Class.new(parent_test_case)
 
-      expect do
-        child_test_case.fixture("teams/basic")
-      end.to raise_error(
-        FixtureKit::MultipleFixtures,
-        "cannot load multiple fixtures in the same class"
-      )
+      parent_test_case.fixture("project_management")
+      child_test_case.fixture("teams/basic")
+
+      expect(runner).to have_received(:register).with(parent_test_case, "project_management")
+      expect(runner).to have_received(:register).with(child_test_case, "teams/basic")
     end
   end
 

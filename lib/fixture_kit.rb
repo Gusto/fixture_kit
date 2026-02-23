@@ -3,6 +3,7 @@
 module FixtureKit
   class Error < StandardError; end
   class DuplicateNameError < Error; end
+  class InvalidFixtureDeclaration < Error; end
   class MultipleFixtures < Error; end
   class CacheMissingError < Error; end
   class FixtureDefinitionNotFound < Error; end

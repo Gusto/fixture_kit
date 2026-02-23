@@ -2,10 +2,11 @@
 
 module FixtureKit
   class Definition
-    attr_reader :exposed
+    attr_reader :exposed, :source_location
 
     def initialize(&definition)
       @definition = definition
+      @source_location = definition.source_location
       @exposed = {}
     end
 

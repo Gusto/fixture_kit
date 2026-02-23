@@ -10,31 +10,31 @@ RSpec.describe FixtureKit::RSpec::ClassMethods do
   end
 
   describe "#fixture" do
-    it "raises when called twice in the same example group" do
+    it "registers named fixtures with the current example group as scope" do
       group = build_group
 
       group.fixture("project_management")
 
-      expect do
-        group.fixture("teams/basic")
-      end.to raise_error(
-        FixtureKit::MultipleFixtures,
-        "cannot load multiple fixtures in the same example group"
-      )
+      expect(runner).to have_received(:register).with(group, "project_management")
     end
 
-    it "raises in nested groups when parent metadata already has a fixture declaration" do
-      parent_group = build_group
-      parent_group.fixture("project_management")
+    it "registers anonymous fixtures with the current example group as scope" do
+      group = build_group
 
+      group.fixture { expose(example: "record") }
+
+      expect(runner).to have_received(:register).with(group, nil)
+    end
+
+    it "allows nested groups to register their own fixtures" do
+      parent_group = build_group
       child_group = build_group(parent_group.metadata)
 
-      expect do
-        child_group.fixture("teams/basic")
-      end.to raise_error(
-        FixtureKit::MultipleFixtures,
-        "cannot load multiple fixtures in the same example group"
-      )
+      parent_group.fixture("project_management")
+      child_group.fixture("teams/basic")
+
+      expect(runner).to have_received(:register).with(parent_group, "project_management")
+      expect(runner).to have_received(:register).with(child_group, "teams/basic")
     end
   end
 
