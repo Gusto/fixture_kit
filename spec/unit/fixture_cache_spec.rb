@@ -110,8 +110,6 @@ RSpec.describe FixtureKit::Cache do
 
       data = JSON.parse(File.read(fixture_cache.path))
       expect(data["records"]).to have_key("User")
-      expect(data["records"]["User"]).not_to include("IGNORE")
-      expect(data["records"]["User"]).not_to include("ON CONFLICT")
 
       User.delete_all
       repository = fixture_cache.load

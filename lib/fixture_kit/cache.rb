@@ -34,8 +34,7 @@ module FixtureKit
         model = ActiveSupport::Inflector.constantize(model_name)
         connection = model.connection
         connection.disable_referential_integrity do
-          connection.execute(build_delete_sql(model.table_name, connection))
-          connection.execute(sql) if sql
+          connection.send(:execute_batch, build_restore_statements(model.table_name, connection, sql), "FixtureKit Load")
         end
       end
 
@@ -103,6 +102,10 @@ module FixtureKit
 
     def build_delete_sql(table_name, connection)
       "DELETE FROM #{connection.quote_table_name(table_name)}"
+    end
+
+    def build_restore_statements(table_name, connection, insert_sql)
+      [build_delete_sql(table_name, connection), insert_sql].compact
     end
 
     def build_insert_sql(table_name, columns, rows, connection)
