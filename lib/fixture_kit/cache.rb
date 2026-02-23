@@ -39,7 +39,7 @@ module FixtureKit
     end
 
     def save
-      configuration.isolator.run do
+      FixtureKit.runner.isolator.run do
         models = SqlSubscriber.capture do
           @definition.evaluate
         end

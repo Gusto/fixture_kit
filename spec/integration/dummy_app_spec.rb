@@ -6,6 +6,7 @@ RSpec.describe "Dummy app integration" do
   DUMMY_ROOT = File.expand_path("../dummy", __dir__)
   DUMMY_RSPEC_PATH = "spec/integration/fixture_kit_integration.rb"
   DUMMY_MINITEST_PATH = "test/integration/fixture_kit_integration_test.rb"
+  EXPECTED_DUMMY_TEST_COUNT = 8
   INTEGRATION_FRAMEWORK = ENV.fetch("FIXTURE_KIT_INTEGRATION_FRAMEWORK", "rspec")
 
   def run_dummy_tests
@@ -68,6 +69,15 @@ RSpec.describe "Dummy app integration" do
 
     expected_markers.each do |marker|
       expect(output).to include(marker), "Expected marker #{marker.inspect} in output.\nOutput:\n#{output}"
+    end
+
+    case INTEGRATION_FRAMEWORK
+    when "rspec"
+      expect(output).to match(/\b#{EXPECTED_DUMMY_TEST_COUNT} examples, 0 failures\b/)
+    when "minitest"
+      expect(output).to match(/\b#{EXPECTED_DUMMY_TEST_COUNT} runs, \d+ assertions, 0 failures, 0 errors, \d+ skips\b/)
+    else
+      raise ArgumentError, "Unsupported integration framework: #{INTEGRATION_FRAMEWORK}"
     end
   end
 end

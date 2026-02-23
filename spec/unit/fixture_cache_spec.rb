@@ -18,7 +18,7 @@ RSpec.describe FixtureKit::Cache do
 
   let(:pass_through_isolator) do
     Class.new do
-      def self.run(&block)
+      def run(&block)
         block.call
       end
     end

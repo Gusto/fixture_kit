@@ -4,8 +4,6 @@ require "fixture_kit"
 
 module FixtureKit
   module RSpec
-    autoload :Isolator, File.expand_path("rspec/isolator", __dir__)
-
     DECLARATION_METADATA_KEY = :fixture_kit_declaration
 
     # Class methods (extended via config.extend)
@@ -45,7 +43,7 @@ module FixtureKit
 
     def self.configure!(config)
       config.add_setting(:fixture_kit, default: FixtureKit.runner)
-      FixtureKit.runner.configuration.isolator = Isolator
+      FixtureKit.runner.configuration.isolator = FixtureKit::RSpecIsolator
 
       config.extend ClassMethods
       config.include InstanceMethods, DECLARATION_METADATA_KEY

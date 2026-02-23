@@ -2,10 +2,8 @@
 
 module FixtureKit
   class Error < StandardError; end
-  class DuplicateFixtureError < Error; end
   class DuplicateNameError < Error; end
   class CacheMissingError < Error; end
-  class PregenerationError < Error; end
   class FixtureDefinitionNotFound < Error; end
   class ExposedRecordNotFound < Error; end
   class RunnerAlreadyStartedError < Error; end
@@ -22,7 +20,8 @@ module FixtureKit
   autoload :Cache,         File.expand_path("fixture_kit/cache", __dir__)
   autoload :Runner,        File.expand_path("fixture_kit/runner", __dir__)
   autoload :Isolator,      File.expand_path("fixture_kit/isolator", __dir__)
-  autoload :Minitest,      File.expand_path("fixture_kit/minitest", __dir__)
+  autoload :MinitestIsolator, File.expand_path("fixture_kit/isolators/minitest_isolator", __dir__)
+  autoload :RSpecIsolator, File.expand_path("fixture_kit/isolators/rspec_isolator", __dir__)
 
   extend Singleton
 end

@@ -10,7 +10,7 @@ module FixtureKit
     def initialize
       @fixture_path = nil
       @cache_path = nil
-      @isolator = FixtureKit::Minitest::Isolator
+      @isolator = FixtureKit::MinitestIsolator
       @on_cache = nil
     end
 

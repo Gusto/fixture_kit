@@ -9,7 +9,7 @@ RSpec.configure do |config|
   end
 end
 
-RSpec.describe FixtureKit::RSpec::Isolator do
+RSpec.describe FixtureKit::RSpecIsolator do
   describe ".run" do
     it "runs inside an isolated RSpec example context" do
       harness_example = nil
@@ -19,7 +19,7 @@ RSpec.describe FixtureKit::RSpec::Isolator do
       end
 
       expect(harness_example).to be_a(RSpec::Core::Example)
-      expect(harness_example.metadata[:description]).to eq("FixtureKit cache pregeneration")
+      expect(harness_example.description).to include("example at")
     end
 
     it "runs global before hooks during harness execution" do
@@ -58,23 +58,20 @@ RSpec.describe FixtureKit::RSpec::Isolator do
       end.to raise_error(RuntimeError, "harness exploded")
     end
 
-    it "raises FixtureKit::PregenerationError when run fails without an exception" do
-      isolator = described_class.new
+    it "re-raises example.exception when run returns false" do
       example_group = double("example_group")
       example = instance_double(RSpec::Core::Example)
       instance = Object.new
+      failure = RuntimeError.new("harness exploded")
 
-      allow(described_class).to receive(:new).and_return(isolator)
-      allow(isolator).to receive(:build_example_group).and_return(example_group)
-      allow(isolator).to receive(:build_example).and_return(example)
+      allow(::RSpec::Core::ExampleGroup).to receive(:subclass).and_return(example_group)
+      allow(example_group).to receive(:example).and_return(example)
       allow(example_group).to receive(:new).and_return(instance)
-      allow(example_group).to receive(:remove_example).with(example)
-      allow(example).to receive(:inspect_output).and_return("output")
       allow(example).to receive(:run).with(instance, RSpec::Core::NullReporter).and_return(false)
-      allow(example).to receive(:exception).and_return(nil)
+      allow(example).to receive(:exception).and_return(failure)
 
       expect { described_class.run { nil } }
-        .to raise_error(FixtureKit::PregenerationError, "FixtureKit pregeneration failed")
+        .to raise_error(RuntimeError, "harness exploded")
     end
   end
 end
