@@ -94,4 +94,63 @@ RSpec.describe "FixtureKit integration" do
       puts "FKIT_ASSERT:ROLLBACK_SECOND_EXAMPLE"
     end
   end
+
+  describe "anonymous fixture" do
+    fixture do
+      anonymous_user = User.create!(name: "Anonymous User", email: "anonymous.fixture@example.com")
+      expose(anonymous_user: anonymous_user)
+    end
+
+    before do
+      @anonymous_user_count_in_before_hook = User.count
+    end
+
+    it "loads and caches anonymous fixture data" do
+      expect(@anonymous_user_count_in_before_hook).to eq(1)
+      expect(fixture.anonymous_user.email).to eq("anonymous.fixture@example.com")
+
+      normalized_scope = self.class.to_s.sub(/\ARSpec::ExampleGroups::/, "")
+      cache_file = File.join(
+        FixtureKit.runner.configuration.cache_path,
+        "_anonymous/#{ActiveSupport::Inflector.underscore(normalized_scope)}.json"
+      )
+      expect(File.exist?(cache_file)).to be(true)
+
+      puts "FKIT_ASSERT:ANONYMOUS_FIXTURE"
+      puts "FKIT_ASSERT:ANONYMOUS_CACHE_PATH"
+    end
+  end
+
+  describe "anonymous fixture overrides" do
+    fixture "teams/basic"
+
+    context "in nested groups" do
+      fixture do
+        override_user = User.create!(name: "Override User", email: "override.fixture@example.com")
+        expose(override_user: override_user)
+      end
+
+      it "overrides parent fixture declaration" do
+        expect(User.count).to eq(1)
+        expect(fixture.override_user.email).to eq("override.fixture@example.com")
+        puts "FKIT_ASSERT:ANONYMOUS_NESTED_OVERRIDE"
+      end
+    end
+  end
+
+  describe "duplicate fixture declarations" do
+    it "raises when declaring fixture twice in the same context" do
+      expect do
+        RSpec::Core::ExampleGroup.describe("Fixture duplicate declaration context") do
+          fixture "teams/basic"
+          fixture do
+            user = User.create!(name: "Duplicate", email: "duplicate.fixture@example.com")
+            expose(user: user)
+          end
+        end
+      end.to raise_error(FixtureKit::MultipleFixtures, "cannot load multiple fixtures in the same context")
+
+      puts "FKIT_ASSERT:ANONYMOUS_DUPLICATE_DECLARATION"
+    end
+  end
 end

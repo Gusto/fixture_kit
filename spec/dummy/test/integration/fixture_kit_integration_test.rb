@@ -85,3 +85,62 @@ class FixtureKitQueryEventCoverageIntegrationTest < ActiveSupport::TestCase
     puts "FKIT_ASSERT:QUERY_TYPES_CAPTURED"
   end
 end
+
+class FixtureKitAnonymousFixtureIntegrationTest < ActiveSupport::TestCase
+  fixture do
+    anonymous_user = User.create!(name: "Anonymous User", email: "anonymous.fixture@example.com")
+    expose(anonymous_user: anonymous_user)
+  end
+
+  setup do
+    @anonymous_user_count_in_setup = User.count
+  end
+
+  test "loads and caches anonymous fixture data" do
+    assert_equal 1, @anonymous_user_count_in_setup
+    assert_equal "anonymous.fixture@example.com", fixture.anonymous_user.email
+
+    cache_file = File.join(
+      FixtureKit.runner.configuration.cache_path,
+      "_anonymous/#{ActiveSupport::Inflector.underscore(self.class.name)}.json"
+    )
+    assert File.exist?(cache_file)
+
+    puts "FKIT_ASSERT:ANONYMOUS_FIXTURE"
+    puts "FKIT_ASSERT:ANONYMOUS_CACHE_PATH"
+  end
+end
+
+class FixtureKitAnonymousParentFixtureIntegrationTest < ActiveSupport::TestCase
+  fixture "teams/basic"
+end
+
+class FixtureKitAnonymousOverrideIntegrationTest < FixtureKitAnonymousParentFixtureIntegrationTest
+  fixture do
+    override_user = User.create!(name: "Override User", email: "override.fixture@example.com")
+    expose(override_user: override_user)
+  end
+
+  test "overrides parent fixture declaration" do
+    assert_equal 1, User.count
+    assert_equal "override.fixture@example.com", fixture.override_user.email
+    puts "FKIT_ASSERT:ANONYMOUS_NESTED_OVERRIDE"
+  end
+end
+
+class FixtureKitAnonymousDuplicateDeclarationIntegrationTest < ActiveSupport::TestCase
+  test "raises when declaring fixture twice in the same context" do
+    error = assert_raises(FixtureKit::MultipleFixtures) do
+      Class.new(ActiveSupport::TestCase) do
+        fixture "teams/basic"
+        fixture do
+          user = User.create!(name: "Duplicate", email: "duplicate.fixture@example.com")
+          expose(user: user)
+        end
+      end
+    end
+
+    assert_equal "cannot load multiple fixtures in the same context", error.message
+    puts "FKIT_ASSERT:ANONYMOUS_DUPLICATE_DECLARATION"
+  end
+end

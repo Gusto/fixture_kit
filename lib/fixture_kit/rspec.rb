@@ -27,12 +27,8 @@ module FixtureKit
       #       end
       #     end
       #   end
-      def fixture(name)
-        if metadata[DECLARATION_METADATA_KEY]
-          raise FixtureKit::MultipleFixtures, "cannot load multiple fixtures in the same example group"
-        end
-
-        metadata[DECLARATION_METADATA_KEY] = ::RSpec.configuration.fixture_kit.register(name)
+      def fixture(name = nil, &definition_block)
+        metadata[DECLARATION_METADATA_KEY] = ::RSpec.configuration.fixture_kit.register(self, name, &definition_block)
       end
     end
 

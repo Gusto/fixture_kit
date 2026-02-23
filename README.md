@@ -106,6 +106,22 @@ end
 
 `fixture` returns a `Repository` and exposes records as methods (for example, `fixture.owner`).
 
+You can also define fixtures anonymously inline:
+
+```ruby
+RSpec.describe Book do
+  fixture do
+    owner = User.create!(name: "Alice", email: "alice@example.com")
+    featured = Book.create!(title: "Dune", owner: owner)
+    expose(owner: owner, featured: featured)
+  end
+
+  it "uses inline fixture data" do
+    expect(fixture.featured.owner).to eq(fixture.owner)
+  end
+end
+```
+
 ### 3. Configure RSpec
 
 ```ruby
@@ -117,7 +133,7 @@ RSpec.configure do |config|
 end
 ```
 
-When you call `fixture "name"` in an example group, FixtureKit registers that fixture with its runner.
+When you call `fixture "name"` or `fixture do ... end` in an example group, FixtureKit registers that fixture with its runner.
 
 ### 4. Configure Minitest
 
@@ -130,7 +146,7 @@ class ActiveSupport::TestCase
 end
 ```
 
-When you call `fixture "name"` in a test class, FixtureKit registers that fixture with its runner and mounts it during test setup.
+When you call `fixture "name"` or `fixture do ... end` in a test class, FixtureKit registers that fixture with its runner and mounts it during test setup.
 
 ## Configuration
 
@@ -152,8 +168,14 @@ FixtureKit.configure do |config|
 
   # Optional callback, called right before a fixture cache is generated.
   # Called on first generation and forced regeneration.
-  # Receives the fixture name as a String.
-  # config.on_cache = ->(fixture_name) { puts "cached #{fixture_name}" }
+  # Receives the fixture identifier:
+  # - named fixtures: String (e.g. "teams/basic")
+  # - anonymous fixtures: scope class
+  # config.on_cache_save = ->(identifier) { puts "cached #{identifier}" }
+
+  # Optional callback, called right before a fixture cache is mounted.
+  # Receives the same fixture identifier shape as on_cache_save.
+  # config.on_cache_mount = ->(identifier) { puts "mounted #{identifier}" }
 end
 ```
 
@@ -168,7 +190,7 @@ When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpecIsolator`. It 
 
 Fixture generation is managed by `FixtureKit::Runner`.
 
-1. Calling `fixture "name"` registers the fixture with the runner.
+1. Calling `fixture "name"` or `fixture do ... end` registers the fixture with the runner.
 2. Runner `start`:
    - clears `cache_path` (unless preserve-cache is enabled),
    - generates caches for all already-registered fixtures.
@@ -179,6 +201,13 @@ When runner start happens:
 
 - `fixture_kit/rspec`: in `before(:suite)`.
 - `fixture_kit/minitest`: lazily during test setup for the first test class that declares `fixture`.
+
+## Fixture Declaration Rules
+
+- Only one `fixture` declaration is allowed per test context.
+- Declaring a fixture twice in the same context raises `FixtureKit::MultipleFixtures`.
+- Child contexts/classes can declare their own fixture and override parent declarations.
+- Providing both a name and a block (or neither) raises `FixtureKit::InvalidFixtureDeclaration`.
 
 ### Preserving Cache Locally
 
@@ -207,9 +236,18 @@ end
 fixture "teams/sales"
 ```
 
+## Anonymous Fixture Cache Paths
+
+Anonymous fixture caches are written under the `_anonymous/` directory inside `cache_path`.
+
+- Minitest: class name is underscored into a path.
+  - `MyFeatureTest` -> `_anonymous/my_feature_test.json`
+- RSpec: class name is underscored after removing `RSpec::ExampleGroups::`.
+  - `RSpec::ExampleGroups::Foo::WithFixtureKit::Hello` -> `_anonymous/foo/with_fixture_kit/hello.json`
+
 ## How It Works
 
-1. **Cache generation**: FixtureKit executes your definition block inside the configured isolator, subscribes to `sql.active_record` notifications to track created/updated/deleted models, queries those model tables, and caches INSERT statements for current table contents.
+1. **Cache generation**: FixtureKit executes your definition block inside the configured isolator, subscribes to `sql.active_record` notifications to track created/updated/deleted models, queries those model tables, and caches SQL statements for current table contents.
 
 2. **Mounting**: FixtureKit loads the cached JSON file, clears each tracked table, and executes the raw SQL INSERT statements directly. No ORM instantiation, no callbacks.
 
@@ -224,8 +262,8 @@ Caches are stored as JSON files in `tmp/cache/fixture_kit/`:
 ```json
 {
   "records": {
-    "User": "INSERT OR IGNORE INTO users (id, name, email) VALUES (1, 'Alice', 'alice@example.com'), (2, 'Bob', 'bob@example.com')",
-    "Project": "INSERT OR IGNORE INTO projects (id, name, user_id) VALUES (1, 'Website', 1)"
+    "User": "INSERT INTO users (id, name, email) VALUES (1, 'Alice', 'alice@example.com'), (2, 'Bob', 'bob@example.com')",
+    "Project": "INSERT INTO projects (id, name, user_id) VALUES (1, 'Website', 1)"
   },
   "exposed": {
     "alice": { "model": "User", "id": 1 },

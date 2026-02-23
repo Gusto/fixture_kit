@@ -14,32 +14,88 @@ RSpec.describe FixtureKit::Registry do
   end
 
   describe "#add" do
-    it "loads and returns a fixture by name" do
+    it "loads and returns a fixture by name for a scope" do
       registry = described_class.new
+      scope = Class.new
 
-      fixture = registry.add("project_management")
+      fixture = registry.add(scope, "project_management")
 
       expect(fixture).to be_a(FixtureKit::Fixture)
-      expect(fixture.name).to eq("project_management")
+      expect(fixture.identifier).to eq("project_management")
     end
 
-    it "returns the already-loaded fixture when added again" do
+    it "reuses the same named fixture instance across different scopes" do
       registry = described_class.new
+      first_scope = Class.new
+      second_scope = Class.new
 
-      first = registry.add("project_management")
-      second = registry.add("project_management")
+      first = registry.add(first_scope, "project_management")
+      second = registry.add(second_scope, "project_management")
 
       expect(second).to equal(first)
     end
 
-    it "raises a custom error when the fixture file does not exist" do
+    it "creates an anonymous fixture from a definition block" do
       registry = described_class.new
+      scope = Class.new
+
+      fixture = registry.add(scope, proc { expose(example: "record") })
+
+      expect(fixture).to be_a(FixtureKit::Fixture)
+      expect(fixture.identifier).to equal(scope)
+    end
+
+    it "raises when declaring multiple fixtures for the same class scope" do
+      registry = described_class.new
+      scope = Class.new
+      registry.add(scope, "project_management")
 
       expect do
-        registry.add("does/not_exist")
+        registry.add(scope, "teams/basic")
+      end.to raise_error(
+        FixtureKit::MultipleFixtures,
+        "cannot load multiple fixtures in the same context"
+      )
+    end
+
+    it "raises when declaring multiple fixtures for the same example group scope" do
+      registry = described_class.new
+      scope = Class.new do
+        def self.metadata
+          { location: "spec/models/user_spec.rb:3" }
+        end
+      end
+      registry.add(scope, "project_management")
+
+      expect do
+        registry.add(scope, "teams/basic")
+      end.to raise_error(
+        FixtureKit::MultipleFixtures,
+        "cannot load multiple fixtures in the same context"
+      )
+    end
+
+    it "raises a custom error when the fixture file does not exist" do
+      registry = described_class.new
+      scope = Class.new
+
+      expect do
+        registry.add(scope, "does/not_exist")
       end.to raise_error(
         FixtureKit::FixtureDefinitionNotFound,
-        /Could not find fixture definition file for 'does\/not_exist'/
+        /cannot find fixture definition file for 'does\/not_exist'/
+      )
+    end
+
+    it "raises when an unsupported declaration type is provided" do
+      registry = described_class.new
+      scope = Class.new
+
+      expect do
+        registry.add(scope, nil)
+      end.to raise_error(
+        FixtureKit::InvalidFixtureDeclaration,
+        "unsupported fixture declaration type: NilClass"
       )
     end
   end

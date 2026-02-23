@@ -7,17 +7,30 @@ require "active_support/inflector"
 
 module FixtureKit
   class Cache
+    ANONYMOUS_DIRECTORY = "_anonymous"
+
     include ConfigurationHelper
 
     attr_reader :fixture
 
-    def initialize(fixture, definition)
+    def initialize(fixture)
       @fixture = fixture
-      @definition = definition
     end
 
     def path
-      File.join(configuration.cache_path, "#{fixture.name}.json")
+      File.join(configuration.cache_path, "#{identifier}.json")
+    end
+
+    def identifier
+      @identifier ||= begin
+        raw_identifier = fixture.identifier
+        if raw_identifier.is_a?(String)
+          raw_identifier
+        else
+          normalized_scope = raw_identifier.to_s.sub(/\ARSpec::ExampleGroups::/, "")
+          File.join(ANONYMOUS_DIRECTORY, ActiveSupport::Inflector.underscore(normalized_scope))
+        end
+      end
     end
 
     def exists?
@@ -26,7 +39,7 @@ module FixtureKit
 
     def load
       unless exists?
-        raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{fixture.name}'"
+        raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{fixture.identifier}'"
       end
 
       @data ||= JSON.parse(File.read(path))
@@ -46,12 +59,12 @@ module FixtureKit
     def save
       FixtureKit.runner.isolator.run do
         models = SqlSubscriber.capture do
-          @definition.evaluate
+          fixture.definition.evaluate
         end
 
         @data = {
           "records" => generate_statements(models),
-          "exposed" => build_exposed_mapping(@definition.exposed)
+          "exposed" => build_exposed_mapping(fixture.definition.exposed)
         }
       end
 
@@ -77,7 +90,7 @@ module FixtureKit
       model.find(id)
     rescue ActiveRecord::RecordNotFound
       raise FixtureKit::ExposedRecordNotFound,
-        "Could not find #{model_name} with id=#{id} for exposed record '#{exposed_name}' in fixture '#{@fixture.name}'"
+        "Could not find #{model_name} with id=#{id} for exposed record '#{exposed_name}' in fixture '#{@fixture.identifier}'"
     end
 
     def generate_statements(models)
