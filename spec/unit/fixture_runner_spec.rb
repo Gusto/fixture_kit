@@ -11,6 +11,22 @@ RSpec.describe FixtureKit::Runner do
     allow(FixtureKit::Registry).to receive(:new).and_return(registry)
   end
 
+  describe "#isolator" do
+    it "instantiates the configured isolator once and memoizes it" do
+      runner = described_class.new
+      isolator_instance = instance_double(FixtureKit::MinitestIsolator)
+      isolator_class = class_double(FixtureKit::MinitestIsolator, new: isolator_instance)
+      runner.configuration.isolator = isolator_class
+
+      first_isolator = runner.isolator
+      second_isolator = runner.isolator
+
+      expect(first_isolator).to equal(isolator_instance)
+      expect(second_isolator).to equal(isolator_instance)
+      expect(isolator_class).to have_received(:new).once
+    end
+  end
+
   describe "#start" do
     it "clears all cache files before caching fixtures" do
       runner = described_class.new

@@ -130,9 +130,9 @@ FixtureKit.configure do |config|
   # Where cache files are stored (default: tmp/cache/fixture_kit)
   config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
 
-  # Wrapper used to isolate generation work (default: FixtureKit::Minitest::Isolator)
-  # config.isolator = FixtureKit::Minitest::Isolator
-  # config.isolator = FixtureKit::RSpec::Isolator
+  # Wrapper used to isolate generation work (default: FixtureKit::MinitestIsolator)
+  # config.isolator = FixtureKit::MinitestIsolator
+  # config.isolator = FixtureKit::RSpecIsolator
 
   # Optional callback, called whenever a fixture cache is generated.
   # Receives the fixture name as a String.
@@ -143,9 +143,9 @@ end
 Custom isolators should subclass `FixtureKit::Isolator` and implement `#run`.
 `#run` receives the generation block and should execute it in whatever lifecycle you need.
 
-By default, FixtureKit uses `FixtureKit::Minitest::Isolator`, which runs generation inside an internal `ActiveSupport::TestCase` and removes that harness case from minitest runnables.
+By default, FixtureKit uses `FixtureKit::MinitestIsolator`, which runs generation inside an internal `ActiveSupport::TestCase` and removes that harness case from minitest runnables.
 
-When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpec::Isolator`. It runs generation inside an internal RSpec example, and uses a null reporter so harness runs do not count toward suite example totals.
+When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpecIsolator`. It runs generation inside an internal RSpec example, and uses a null reporter so harness runs do not count toward suite example totals.
 
 ## Lifecycle
 
