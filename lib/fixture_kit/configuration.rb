@@ -8,14 +8,14 @@ module FixtureKit
     attr_accessor :on_cache
 
     def initialize
-      @fixture_path = nil
+      @fixture_path = "fixture_kit"
       @cache_path = nil
       @isolator = FixtureKit::MinitestIsolator
       @on_cache = nil
     end
 
     def fixture_path
-      @fixture_path ||= detect_fixture_path
+      @fixture_path
     end
 
     def cache_path
@@ -23,20 +23,6 @@ module FixtureKit
     end
 
     private
-
-    def detect_fixture_path
-      if defined?(::RSpec)
-        "spec/fixture_kit"
-      elsif defined?(::Minitest)
-        "test/fixture_kit"
-      elsif Dir.exist?("spec")
-        "spec/fixture_kit"
-      elsif Dir.exist?("test")
-        "test/fixture_kit"
-      else
-        "spec/fixture_kit"
-      end
-    end
 
     def detect_cache_path
       "tmp/cache/fixture_kit"

@@ -3,6 +3,19 @@
 require "spec_helper"
 
 RSpec.describe FixtureKit::Configuration do
+  describe "#fixture_path" do
+    it "defaults to fixture_kit" do
+      expect(described_class.new.fixture_path).to eq("fixture_kit")
+    end
+
+    it "returns an explicitly configured path" do
+      configuration = described_class.new
+      configuration.fixture_path = "spec/fixture_kit"
+
+      expect(configuration.fixture_path).to eq("spec/fixture_kit")
+    end
+  end
+
   describe "#isolator" do
     it "defaults to FixtureKit::MinitestIsolator" do
       expect(described_class.new.isolator).to eq(FixtureKit::MinitestIsolator)

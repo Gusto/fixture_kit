@@ -137,10 +137,10 @@ When you call `fixture "name"` in a test class, FixtureKit registers that fixtur
 ```ruby
 # spec/support/fixture_kit.rb
 FixtureKit.configure do |config|
-  # Where fixture definitions live.
-  # Default is auto-detected:
-  # - spec/fixture_kit when RSpec is loaded
-  # - test/fixture_kit when Minitest is loaded
+  # Where fixture definitions live (default: fixture_kit).
+  # Framework entrypoints set a framework-specific default:
+  # - fixture_kit/rspec -> spec/fixture_kit
+  # - fixture_kit/minitest -> test/fixture_kit
   config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
 
   # Where cache files are stored (default: tmp/cache/fixture_kit)
