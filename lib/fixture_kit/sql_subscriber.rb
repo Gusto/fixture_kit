@@ -6,7 +6,7 @@ require "active_support/inflector"
 module FixtureKit
   class SqlSubscriber
     EVENT = "sql.active_record"
-    NAME_PATTERN = /\A(?<model_name>.+?) (?:Create|Update(?: All)?|Destroy|Delete(?: All)?)\z/
+    NAME_PATTERN = /\A(?<model_name>.+?) (?:(?:Create|Destroy)|(?:Update|Delete)(?: All)?)\z/
 
     def self.capture(&block)
       models = Set.new
