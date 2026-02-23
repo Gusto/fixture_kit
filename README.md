@@ -10,7 +10,7 @@ Test data setup is slow. Every `Model.create!` or `FactoryBot.create` hits the d
 
 FixtureKit caches database records as raw SQL INSERT statements. It executes your fixture definition once, captures the resulting database state, and generates optimized batch INSERT statements. Fixture loads then replay these statements directly: no ORM overhead, no callbacks, just fast SQL.
 
-Combined with RSpec's transactional fixtures, each test runs in a transaction that rolls back—so cached data can be reused across tests without cleanup.
+Combined with framework transactions (`use_transactional_fixtures` in RSpec, `use_transactional_tests` in Minitest), each test runs in a transaction that rolls back, so cached data can be reused safely between tests.
 
 ## Installation
 
@@ -166,10 +166,13 @@ FixtureKit.configure do |config|
   # config.adapter(FixtureKit::MinitestAdapter)
   # config.adapter(FixtureKit::RSpecAdapter)
   # config.adapter(CustomAdapter, option1: "value1")
+  #
+  # Calling `adapter` with args sets adapter class + options.
+  # Calling `adapter` with no args returns the configured adapter class.
 
   # Optional callback, called right before a fixture cache is generated.
   # Called on first generation and forced regeneration.
-  # Receives the cache identifier as a String.
+  # Receives the cache identifier as a String (path-like, without ".json").
   # - named fixtures: "teams/basic"
   # - anonymous fixtures: "_anonymous/foo/with_fixture_kit/hello"
   # config.on_cache_save = ->(identifier) { puts "cached #{identifier}" }
@@ -186,6 +189,8 @@ Custom adapters should subclass `FixtureKit::Adapter` and implement:
 
 `#execute` receives the generation block and should run it in whatever lifecycle you need.
 `#identifier_for` receives a non-string fixture identifier (for anonymous fixtures) and must return a String cache identifier.
+
+Options passed via `config.adapter(...)` are provided to your adapter initializer as a hash and available as `options`.
 
 By default, FixtureKit uses `FixtureKit::MinitestAdapter`, which runs generation inside an internal `ActiveSupport::TestCase` and removes that harness case from minitest runnables.
 
@@ -244,6 +249,7 @@ fixture "teams/sales"
 ## Anonymous Fixture Cache Paths
 
 Anonymous fixture caches are written under the `_anonymous/` directory inside `cache_path`.
+That `_anonymous/...` value is also the cache identifier passed to `on_cache_save` and `on_cache_mount`.
 
 - Minitest: class name is underscored into a path.
   - `MyFeatureTest` -> `_anonymous/my_feature_test.json`
@@ -252,7 +258,7 @@ Anonymous fixture caches are written under the `_anonymous/` directory inside `c
 
 ## How It Works
 
-1. **Cache generation**: FixtureKit executes your definition block inside the configured adapter, subscribes to `sql.active_record` notifications to track created/updated/deleted models, queries those model tables, and caches SQL statements for current table contents.
+1. **Cache generation**: FixtureKit executes your definition block inside the configured adapter, subscribes to `sql.active_record` notifications to track model writes (`Insert`, `Upsert`, `Create`, `Update`, `Delete`, `Destroy`, including bulk variants), queries those model tables, and caches SQL statements for current table contents.
 
 2. **Mounting**: FixtureKit loads the cached JSON file, clears each tracked table, and executes the raw SQL INSERT statements directly. No ORM instantiation, no callbacks.
 
@@ -278,7 +284,7 @@ Caches are stored as JSON files in `tmp/cache/fixture_kit/`:
 }
 ```
 
-- **records**: Maps model names to their INSERT statements. Using model names (not table names) allows FixtureKit to use the correct database connection for multi-database setups.
+- **records**: Maps model names to their INSERT statements (or `null` when a tracked table is empty). Using model names (not table names) allows FixtureKit to use the correct database connection for multi-database setups.
 - **exposed**: Maps fixture accessor names to their model class and ID for querying after cache replay.
 
 ## Cache Management
