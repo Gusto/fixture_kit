@@ -202,15 +202,16 @@ Fixture generation is managed by `FixtureKit::Runner`.
 
 1. Calling `fixture "name"` or `fixture do ... end` registers the fixture with the runner.
 2. Runner `start`:
-   - clears `cache_path` (unless preserve-cache is enabled),
-   - generates caches for all already-registered fixtures.
-3. If new tests are loaded after start (for example, queue-mode CI runners), newly registered fixtures are cached immediately.
+   - clears `cache_path` (unless preserve-cache is enabled).
+3. Cache generation is framework-driven:
+   - RSpec: each declaring example group runs `fixture.cache` in `before(:context)`.
+   - Minitest: each declaring test class runs `fixture.cache` in class-level `run_suite` before test methods execute.
 4. At test runtime, `fixture` mounts from cache and returns a `Repository`.
 
 When runner start happens:
 
 - `fixture_kit/rspec`: in `before(:suite)`.
-- `fixture_kit/minitest`: lazily during test setup for the first test class that declares `fixture`.
+- `fixture_kit/minitest`: in class-level `run_suite` for test classes that declare `fixture`.
 
 ## Fixture Declaration Rules
 

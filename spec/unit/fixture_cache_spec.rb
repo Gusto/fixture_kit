@@ -193,6 +193,45 @@ RSpec.describe FixtureKit::Cache do
       expect(connection.public_methods).not_to include(:execute_batch)
     end
 
+    it "aggregates restore queries and executes one batch per connection" do
+      user_sql = "INSERT INTO users (id, name) VALUES (1, 'Alice')"
+      project_sql = "INSERT INTO projects (id, name, owner_id) VALUES (1, 'Website', 1)"
+      activity_log_sql = "INSERT INTO activity_logs (id, action) VALUES (1, 'created')"
+      allow(cache).to receive(:exists?).and_return(true)
+      allow(cache).to receive(:build_repository).and_return(:repository)
+      cache.instance_variable_set(
+        :@data,
+        {
+          "records" => {
+            "User" => user_sql,
+            "Project" => project_sql,
+            "ActivityLog" => activity_log_sql
+          },
+          "exposed" => {}
+        }
+      )
+
+      primary_connection = User.connection
+      analytics_connection = ActivityLog.connection
+      primary_statements = [
+        cache.send(:build_delete_sql, User),
+        user_sql,
+        cache.send(:build_delete_sql, Project),
+        project_sql
+      ]
+      analytics_statements = [
+        cache.send(:build_delete_sql, ActivityLog),
+        activity_log_sql
+      ]
+
+      expect(primary_connection).to receive(:disable_referential_integrity).once.and_yield
+      expect(primary_connection).to receive(:execute_batch).with(primary_statements, "FixtureKit Load").once
+      expect(analytics_connection).to receive(:disable_referential_integrity).once.and_yield
+      expect(analytics_connection).to receive(:execute_batch).with(analytics_statements, "FixtureKit Load").once
+
+      expect(cache.load).to eq(:repository)
+    end
+
     it "raises when cache is missing" do
       expect do
         cache.load

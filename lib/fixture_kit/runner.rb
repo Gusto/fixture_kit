@@ -16,9 +16,7 @@ module FixtureKit
     end
 
     def register(scope, name = nil, &definition_block)
-      registry.add(scope, normalize_registration(name, definition_block)).tap do |fixture|
-        fixture.cache if started?
-      end
+      registry.add(scope, normalize_registration(name, definition_block))
     end
 
     def start
@@ -26,7 +24,6 @@ module FixtureKit
       @started = true
 
       clear_cache unless preserve_cache?
-      registry.fixtures.each(&:cache)
     end
 
     def adapter
