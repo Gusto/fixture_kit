@@ -7,7 +7,6 @@ module FixtureKit
   class MultipleFixtures < Error; end
   class CacheMissingError < Error; end
   class FixtureDefinitionNotFound < Error; end
-  class ExposedRecordNotFound < Error; end
   class RunnerAlreadyStartedError < Error; end
 
   autoload :VERSION,       File.expand_path("fixture_kit/version", __dir__)

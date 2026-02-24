@@ -50,7 +50,7 @@ module FixtureKit
         end
       end
 
-      build_repository(@data.fetch("exposed"))
+      Repository.new(@data.fetch("exposed"))
     end
 
     def save
@@ -69,26 +69,7 @@ module FixtureKit
       File.write(path, JSON.pretty_generate(@data))
     end
 
-    # Query exposed records from the database and return a Repository.
-    def build_repository(exposed)
-      exposed_records = exposed.each_with_object({}) do |(name, value), hash|
-        was_array = value.is_a?(Array)
-        records = Array.wrap(value).map { |record_info| find_exposed_record(record_info.fetch("model"), record_info.fetch("id"), name) }
-        hash[name.to_sym] = was_array ? records : records.first
-      end
-
-      Repository.new(exposed_records)
-    end
-
     private
-
-    def find_exposed_record(model_name, id, exposed_name)
-      model = ActiveSupport::Inflector.constantize(model_name)
-      model.find(id)
-    rescue ActiveRecord::RecordNotFound
-      raise FixtureKit::ExposedRecordNotFound,
-        "Could not find #{model_name} with id=#{id} for exposed record '#{exposed_name}' in fixture '#{@fixture.identifier}'"
-    end
 
     def generate_statements(models)
       statements_by_model = {}
