@@ -1,19 +1,40 @@
 # frozen_string_literal: true
 
+require "active_support/inflector"
+
 module FixtureKit
   class Repository
     def initialize(exposed_records)
-      @records = exposed_records
-      @records.each_value { |value| value.freeze if value.is_a?(Array) }
-      define_accessors
+      @records = exposed_records.transform_keys(&:to_sym)
+      @loaded_records = {}
+      define_readers
     end
 
     private
 
-    def define_accessors
-      @records.each do |name, value|
-        define_singleton_method(name) { value }
+    def define_readers
+      @records.each_key do |name|
+        define_singleton_method(name) { fetch(name) }
       end
+    end
+
+    def fetch(name)
+      return @loaded_records[name] if @loaded_records.key?(name)
+
+      @loaded_records[name] = materialize(@records.fetch(name))
+    end
+
+    def materialize(value)
+      if value.is_a?(Array)
+        value.map { |record_info| load_record(record_info) }.freeze
+      else
+        load_record(value)
+      end
+    end
+
+    def load_record(record_info)
+      model = ActiveSupport::Inflector.constantize(record_info.fetch("model"))
+      model.find_by(id: record_info.fetch("id"))
     end
   end
 end

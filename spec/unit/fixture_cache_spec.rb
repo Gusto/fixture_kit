@@ -198,7 +198,7 @@ RSpec.describe FixtureKit::Cache do
       project_sql = "INSERT INTO projects (id, name, owner_id) VALUES (1, 'Website', 1)"
       activity_log_sql = "INSERT INTO activity_logs (id, action) VALUES (1, 'created')"
       allow(cache).to receive(:exists?).and_return(true)
-      allow(cache).to receive(:build_repository).and_return(:repository)
+      allow(FixtureKit::Repository).to receive(:new).with({}).and_return(:repository)
       cache.instance_variable_set(
         :@data,
         {

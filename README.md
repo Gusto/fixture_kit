@@ -106,6 +106,13 @@ end
 
 `fixture` returns a `Repository` and exposes records as methods (for example, `fixture.owner`).
 
+Exposed records are loaded lazily. The first call to `fixture.some_name` performs a `find_by(id: ...)` and memoizes the result for that test.
+
+That means:
+- If setup code updates the row before first access, you will get the updated row.
+- If setup code deletes the row before first access, you will get `nil`.
+- After first access, the value is memoized for the rest of the test.
+
 You can also define fixtures anonymously inline:
 
 ```ruby
