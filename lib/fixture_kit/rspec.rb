@@ -52,7 +52,7 @@ module FixtureKit
       FixtureKit.runner.configuration.adapter(FixtureKit::RSpecAdapter)
 
       config.extend ClassMethods
-      config.include InstanceMethods, DECLARATION_METADATA_KEY
+      config.include InstanceMethods
 
       # Load declared fixtures at the beginning of each example.
       # Runs inside transactional fixtures and before user-defined before hooks.
