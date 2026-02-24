@@ -2,19 +2,10 @@
 
 Fast test fixtures with SQL caching.
 
-## The Problem
-
-Test data setup is slow. Every `Model.create!` or `FactoryBot.create` hits the database, and complex test scenarios can require dozens of inserts per test.
-
-## The Solution
-
-FixtureKit caches database records as raw SQL INSERT statements. It executes your fixture definition once, captures the resulting database state, and generates optimized batch INSERT statements. Fixture loads then replay these statements directly: no ORM overhead, no callbacks, just fast SQL.
-
-Combined with framework transactions (`use_transactional_fixtures` in RSpec, `use_transactional_tests` in Minitest), each test runs in a transaction that rolls back, so cached data can be reused safely between tests.
+- Full documentation (guides): [GitHub Wiki](https://github.com/Gusto/fixture_kit/wiki)
+- API/reference (canonical): [docs/reference.md](docs/reference.md)
 
 ## Installation
-
-Add to your Gemfile:
 
 ```ruby
 group :test do
@@ -24,112 +15,21 @@ end
 
 ## Quick Start
 
-### 1. Define a Fixture
-
-Create fixture files in `spec/fixture_kit/` (or `test/fixture_kit/` for test-unit/minitest-style setups). Use whatever method you prefer to create records.
-
-**Using ActiveRecord directly:**
+### 1. Define a fixture
 
 ```ruby
-# spec/fixture_kit/bookstore.rb
+# spec/fixture_kit/project_management.rb
 FixtureKit.define do
-  store = Store.create!(name: "Powell's Books")
-  owner = User.create!(name: "Alice", email: "alice@example.com", store: store)
+  owner = User.create!(name: "Alice", email: "alice@example.com")
+  project = Project.create!(name: "Roadmap", owner: owner)
 
-  books = 3.times.map do |i|
-    Book.create!(title: "Book #{i + 1}", store: store)
-  end
-
-  featured = Book.create!(title: "Dune", store: store, featured: true)
-
-  expose(store: store, owner: owner, books: books, featured: featured)
+  expose(owner: owner, project: project)
 end
 ```
 
-**Using FactoryBot:**
+### 2. Configure your framework
 
-```ruby
-# spec/fixture_kit/bookstore.rb
-FixtureKit.define do
-  store = FactoryBot.create(:store, name: "Powell's Books")
-  owner = FactoryBot.create(:user, :admin, store: store)
-  books = FactoryBot.create_list(:book, 3, store: store)
-  featured = FactoryBot.create(:book, :bestseller, store: store, title: "Dune")
-
-  expose(store: store, owner: owner, books: books, featured: featured)
-end
-```
-
-The filename determines the fixture name—no need to pass a name to `define`.
-
-You can call `expose` multiple times to organize your setup code:
-
-```ruby
-FixtureKit.define do
-  # Set up users
-  admin = User.create!(name: "Admin", role: "admin")
-  member = User.create!(name: "Member", role: "member")
-  expose(admin: admin, member: member)
-
-  # Set up projects
-  project = Project.create!(name: "Website", owner: admin)
-  expose(project: project)
-
-  # Set up tasks
-  tasks = 3.times.map { |i| Task.create!(title: "Task #{i + 1}", project: project) }
-  expose(tasks: tasks)
-end
-```
-
-Exposing the same name twice raises `FixtureKit::DuplicateNameError`.
-
-### 2. Use in Tests
-
-```ruby
-# spec/models/book_spec.rb
-RSpec.describe Book do
-  fixture "bookstore"
-
-  it "belongs to a store" do
-    expect(fixture.featured.store).to eq(fixture.store)
-  end
-
-  it "has multiple books" do
-    expect(fixture.books.size).to eq(3)
-  end
-
-  it "exposes records as methods" do
-    expect(fixture.owner.email).to eq("alice@example.com")
-  end
-end
-```
-
-`fixture` returns a `Repository` and exposes records as methods (for example, `fixture.owner`).
-
-Exposed records are loaded lazily. The first call to `fixture.some_name` performs a `find_by(id: ...)` and memoizes the result for that test.
-
-That means:
-- If setup code updates the row before first access, you will get the updated row.
-- If setup code deletes the row before first access, you will get `nil`.
-- After first access, the value is memoized for the rest of the test.
-
-You can also define fixtures anonymously inline:
-
-```ruby
-RSpec.describe Book do
-  fixture do
-    owner = User.create!(name: "Alice", email: "alice@example.com")
-    featured = Book.create!(title: "Dune", owner: owner)
-    expose(owner: owner, featured: featured)
-  end
-
-  it "uses inline fixture data" do
-    expect(fixture.featured.owner).to eq(fixture.owner)
-  end
-end
-```
-
-### 3. Configure RSpec
+RSpec:
 
 ```ruby
 # spec/rails_helper.rb
@@ -140,9 +40,7 @@ RSpec.configure do |config|
 end
 ```
 
-When you call `fixture "name"` or `fixture do ... end` in an example group, FixtureKit registers that fixture with its runner.
-
-### 4. Configure Minitest
+Minitest:
 
 ```ruby
 # test/test_helper.rb
@@ -153,172 +51,33 @@ class ActiveSupport::TestCase
 end
 ```
 
-When you call `fixture "name"` or `fixture do ... end` in a test class, FixtureKit registers that fixture with its runner and mounts it during test setup.
+### 3. Use the fixture in tests
 
-## Configuration
+RSpec:
 
 ```ruby
-# spec/support/fixture_kit.rb
-FixtureKit.configure do |config|
-  # Where fixture definitions live (default: fixture_kit).
-  # Framework entrypoints set a framework-specific default:
-  # - fixture_kit/rspec -> spec/fixture_kit
-  # - fixture_kit/minitest -> test/fixture_kit
-  config.fixture_path = Rails.root.join("spec/fixture_kit").to_s
+RSpec.describe Project do
+  fixture "project_management"
 
-  # Where cache files are stored (default: tmp/cache/fixture_kit)
-  config.cache_path = Rails.root.join("tmp/cache/fixture_kit").to_s
-
-  # Adapter used to isolate generation work (default: FixtureKit::MinitestAdapter)
-  # config.adapter(FixtureKit::MinitestAdapter)
-  # config.adapter(FixtureKit::RSpecAdapter)
-  # config.adapter(CustomAdapter, option1: "value1")
-  #
-  # Calling `adapter` with args sets adapter class + options.
-  # Calling `adapter` with no args returns the configured adapter class.
-
-  # Optional callback registrations.
-  # You can register multiple callbacks for each hook.
-  # Identifier is a String cache identifier (path-like, without ".json"):
-  # - named fixtures: "teams/basic"
-  # - anonymous fixtures: "_anonymous/foo/with_fixture_kit/hello"
-  config.on_cache_save do |identifier|
-    puts "about to save #{identifier}"
-  end
-
-  # Called after cache save with identifier and elapsed time in seconds.
-  config.on_cache_saved do |identifier, duration|
-    puts "saved #{identifier} in #{duration.round(3)}s"
-  end
-
-  config.on_cache_mount do |identifier|
-    puts "about to mount #{identifier}"
-  end
-
-  # Called after cache mount with identifier and elapsed time in seconds.
-  config.on_cache_mounted do |identifier, duration|
-    puts "mounted #{identifier} in #{duration.round(3)}s"
+  it "loads exposed records" do
+    expect(fixture.project.owner).to eq(fixture.owner)
   end
 end
 ```
 
-Custom adapters should subclass `FixtureKit::Adapter` and implement:
-- `#execute`
-- `#identifier_for`
-
-`#execute` receives the generation block and should run it in whatever lifecycle you need.
-`#identifier_for` receives a non-string fixture identifier (for anonymous fixtures) and must return a normalized String identifier. Cache namespace/prefixing is applied by `FixtureKit::Cache`.
-
-Options passed via `config.adapter(...)` are provided to your adapter initializer as a hash and available as `options`.
-
-By default, FixtureKit uses `FixtureKit::MinitestAdapter`, which runs generation inside an internal `ActiveSupport::TestCase` and removes that harness case from minitest runnables.
-
-When using `fixture_kit/rspec`, FixtureKit sets `FixtureKit::RSpecAdapter`. It runs generation inside an internal RSpec example, and uses a null reporter so harness runs do not count toward suite example totals.
-
-## Lifecycle
-
-Fixture generation is managed by `FixtureKit::Runner`.
-
-1. Calling `fixture "name"` or `fixture do ... end` registers the fixture with the runner.
-2. Runner `start`:
-   - clears `cache_path` (unless preserve-cache is enabled).
-3. Cache generation is framework-driven:
-   - RSpec: each declaring example group runs `fixture.cache` in `before(:context)`.
-   - Minitest: each declaring test class runs `fixture.cache` in class-level `run_suite` before test methods execute.
-4. At test runtime, `fixture` mounts from cache and returns a `Repository`.
-
-When runner start happens:
-
-- `fixture_kit/rspec`: in `before(:suite)`.
-- `fixture_kit/minitest`: in class-level `run_suite` for test classes that declare `fixture`.
-
-## Fixture Declaration Rules
-
-- Only one `fixture` declaration is allowed per test context.
-- Declaring a fixture twice in the same context raises `FixtureKit::MultipleFixtures`.
-- Child contexts/classes can declare their own fixture and override parent declarations.
-- Providing both a name and a block (or neither) raises `FixtureKit::InvalidFixtureDeclaration`.
-
-### Preserving Cache Locally
-
-If you want to skip cache clearing when the runner starts (e.g., to reuse caches across test runs during local development), set the `FIXTURE_KIT_PRESERVE_CACHE` environment variable:
-
-```bash
-FIXTURE_KIT_PRESERVE_CACHE=1 bundle exec rspec
-```
-
-Truthy values are case-insensitive: `1`, `true`, `yes`.
-
-This is useful when you're iterating on tests and your fixture definitions haven't changed.
-
-## Nested Fixtures
-
-Organize fixtures in subdirectories:
+Minitest:
 
 ```ruby
-# spec/fixture_kit/teams/sales.rb
-FixtureKit.define do
-  # ...
+class ProjectTest < ActiveSupport::TestCase
+  fixture "project_management"
+
+  test "loads exposed records" do
+    assert_equal fixture.owner, fixture.project.owner
+  end
 end
 ```
 
-```ruby
-fixture "teams/sales"
-```
-
-## Anonymous Fixture Cache Paths
-
-Anonymous fixture caches are written under the `_anonymous/` directory inside `cache_path`.
-That `_anonymous/...` value is also the cache identifier passed to cache callbacks (`on_cache_save`, `on_cache_saved`, `on_cache_mount`, and `on_cache_mounted`).
-
-- Minitest: class name is underscored into a path.
-  - `MyFeatureTest` -> `_anonymous/my_feature_test.json`
-- RSpec: class name is underscored after removing `RSpec::ExampleGroups::`.
-  - `RSpec::ExampleGroups::Foo::WithFixtureKit::Hello` -> `_anonymous/foo/with_fixture_kit/hello.json`
-
-## How It Works
-
-1. **Cache generation**: FixtureKit executes your definition block inside the configured adapter, subscribes to `sql.active_record` notifications to track model writes (`Insert`, `Upsert`, `Create`, `Update`, `Delete`, `Destroy`, including bulk variants), queries those model tables, and caches SQL statements for current table contents.
-
-2. **Mounting**: FixtureKit loads the cached JSON file, clears each tracked table, and executes the raw SQL INSERT statements directly. No ORM instantiation, no callbacks.
-
-3. **Repository build**: FixtureKit stores exposed model + id metadata and returns a `Repository` that lazily resolves records on first method access.
-
-4. **Transaction isolation**: Use framework transactions (`use_transactional_fixtures` in RSpec, `use_transactional_tests` in Minitest) so test writes roll back and cached data can be reused safely between tests.
-
-### Cache Format
-
-Caches are stored as JSON files in `tmp/cache/fixture_kit/`:
-
-```json
-{
-  "records": {
-    "User": "INSERT INTO users (id, name, email) VALUES (1, 'Alice', 'alice@example.com'), (2, 'Bob', 'bob@example.com')",
-    "Project": "INSERT INTO projects (id, name, user_id) VALUES (1, 'Website', 1)"
-  },
-  "exposed": {
-    "alice": { "model": "User", "id": 1 },
-    "bob": { "model": "User", "id": 2 },
-    "project": { "model": "Project", "id": 1 }
-  }
-}
-```
-
-- **records**: Maps model names to their INSERT statements (or `null` when a tracked table is empty). Using model names (not table names) allows FixtureKit to use the correct database connection for multi-database setups.
-- **exposed**: Maps fixture accessor names to their model class and ID for querying after cache replay.
-
-## Cache Management
-
-Delete the cache directory to force regeneration:
-```bash
-rm -rf tmp/cache/fixture_kit
-```
-
-Caches are cleared at runner start unless `FIXTURE_KIT_PRESERVE_CACHE` is truthy.
-
-## Multi-Database Support
-
-FixtureKit automatically handles multiple databases. Records are stored by model name in the cache, and when replaying, FixtureKit uses each model's database connection to execute the INSERT statements. This means records are automatically inserted into the correct database without any additional configuration.
+`fixture` returns a `Repository`, and exposed names become reader methods.
 
 ## Requirements
 
@@ -328,4 +87,4 @@ FixtureKit automatically handles multiple databases. Records are stored by model
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+MIT. See [LICENSE](LICENSE).
