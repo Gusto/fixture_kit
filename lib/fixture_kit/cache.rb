@@ -97,7 +97,7 @@ module FixtureKit
         columns = model.column_names
 
         rows = []
-        model.order(:id).find_each do |record|
+        model.unscoped.order(:id).find_each do |record|
           row_values = columns.map do |col|
             value = record.read_attribute_before_type_cast(col)
             model.connection.quote(value)
@@ -132,11 +132,17 @@ module FixtureKit
     end
 
     def statements_by_connection(records)
+      deleted_tables = Set.new
       records.each_with_object({}) do |(model_name, sql), grouped|
         model = ActiveSupport::Inflector.constantize(model_name)
         connection = model.connection
         grouped[connection] ||= []
-        grouped[connection] << build_delete_sql(model)
+
+        table_key = [connection, model.table_name]
+        if deleted_tables.add?(table_key)
+          grouped[connection] << build_delete_sql(model)
+        end
+
         grouped[connection] << sql if sql
       end
     end

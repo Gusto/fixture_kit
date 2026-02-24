@@ -254,5 +254,6 @@ RSpec.describe FixtureKit::Cache do
       expect(repository.alice).to be_a(User)
       expect(repository.alice.name).to eq("Alice")
     end
+
   end
 end

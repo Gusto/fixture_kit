@@ -32,6 +32,7 @@ def setup_databases
     ActiveRecord::Base.connection.drop_table(:tasks, if_exists: true)
     ActiveRecord::Base.connection.drop_table(:projects, if_exists: true)
     ActiveRecord::Base.connection.drop_table(:users, if_exists: true)
+    ActiveRecord::Base.connection.drop_table(:vehicles, if_exists: true)
   end
 
   AnalyticsRecord.connection.disable_referential_integrity do
@@ -69,6 +70,13 @@ def setup_databases
   ActiveRecord::Base.connection.create_table :comments, force: true do |t|
     t.text :body, null: false
     t.references :commentable, polymorphic: true, null: false
+    t.timestamps
+  end
+
+  ActiveRecord::Base.connection.create_table :vehicles, force: true do |t|
+    t.string :type, null: false
+    t.string :name, null: false
+    t.integer :year
     t.timestamps
   end
 
