@@ -2,6 +2,15 @@
 
 require "rails_helper"
 require "json"
+require "active_support/testing/time_helpers"
+
+module FixtureKitIntegrationTimeHelpers
+  include ActiveSupport::Testing::TimeHelpers
+end
+
+RSpec.configure do |config|
+  config.include(FixtureKitIntegrationTimeHelpers)
+end
 
 RSpec.describe "FixtureKit integration" do
   describe "fixture preload timing" do
@@ -135,6 +144,20 @@ RSpec.describe "FixtureKit integration" do
         expect(fixture.override_user.email).to eq("override.fixture@example.com")
         puts "FKIT_ASSERT:ANONYMOUS_NESTED_OVERRIDE"
       end
+    end
+  end
+
+  describe "anonymous fixture helper methods" do
+    fixture do
+      travel_to(Time.zone.parse("2024-03-02 10:15:00")) do
+        user = User.create!(name: "Time Traveler", email: "time.fixture@example.com")
+        expose(time_user: user)
+      end
+    end
+
+    it "can call RSpec example helper methods during fixture generation" do
+      expect(fixture.time_user.created_at).to eq(Time.zone.parse("2024-03-02 10:15:00"))
+      puts "FKIT_ASSERT:ANONYMOUS_HELPER_METHODS"
     end
   end
 
