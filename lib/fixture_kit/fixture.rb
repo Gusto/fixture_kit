@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "benchmark"
+
 module FixtureKit
   class Fixture
     include ConfigurationHelper
@@ -15,8 +17,8 @@ module FixtureKit
     def cache(force: false)
       return if @cache.exists? && !force
 
-      configuration.on_cache_save&.call(@cache.identifier)
-      @cache.save
+      emit(:cache_save)
+      emit(:cache_saved) { @cache.save }
     end
 
     def mount
@@ -24,8 +26,25 @@ module FixtureKit
         raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{identifier}'"
       end
 
-      configuration.on_cache_mount&.call(@cache.identifier)
-      @cache.load
+      emit(:cache_mount)
+      emit(:cache_mounted) { @cache.load }
+    end
+
+    private
+
+    def emit(event)
+      cache_identifier = @cache.identifier
+      unless block_given?
+        configuration.callbacks.run(event, cache_identifier)
+        return
+      end
+
+      value = nil
+      elapsed = Benchmark.realtime do
+        value = yield
+      end
+      configuration.callbacks.run(event, cache_identifier, elapsed)
+      value
     end
   end
 end

@@ -177,16 +177,28 @@ FixtureKit.configure do |config|
   # Calling `adapter` with args sets adapter class + options.
   # Calling `adapter` with no args returns the configured adapter class.
 
-  # Optional callback, called right before a fixture cache is generated.
-  # Called on first generation and forced regeneration.
-  # Receives the cache identifier as a String (path-like, without ".json").
+  # Optional callback registrations.
+  # You can register multiple callbacks for each hook.
+  # Identifier is a String cache identifier (path-like, without ".json"):
   # - named fixtures: "teams/basic"
   # - anonymous fixtures: "_anonymous/foo/with_fixture_kit/hello"
-  # config.on_cache_save = ->(identifier) { puts "cached #{identifier}" }
+  config.on_cache_save do |identifier|
+    puts "about to save #{identifier}"
+  end
 
-  # Optional callback, called right before a fixture cache is mounted.
-  # Receives the same String cache identifier as on_cache_save.
-  # config.on_cache_mount = ->(identifier) { puts "mounted #{identifier}" }
+  # Called after cache save with identifier and elapsed time in seconds.
+  config.on_cache_saved do |identifier, duration|
+    puts "saved #{identifier} in #{duration.round(3)}s"
+  end
+
+  config.on_cache_mount do |identifier|
+    puts "about to mount #{identifier}"
+  end
+
+  # Called after cache mount with identifier and elapsed time in seconds.
+  config.on_cache_mounted do |identifier, duration|
+    puts "mounted #{identifier} in #{duration.round(3)}s"
+  end
 end
 ```
 
@@ -257,7 +269,7 @@ fixture "teams/sales"
 ## Anonymous Fixture Cache Paths
 
 Anonymous fixture caches are written under the `_anonymous/` directory inside `cache_path`.
-That `_anonymous/...` value is also the cache identifier passed to `on_cache_save` and `on_cache_mount`.
+That `_anonymous/...` value is also the cache identifier passed to cache callbacks (`on_cache_save`, `on_cache_saved`, `on_cache_mount`, and `on_cache_mounted`).
 
 - Minitest: class name is underscored into a path.
   - `MyFeatureTest` -> `_anonymous/my_feature_test.json`
@@ -270,7 +282,7 @@ That `_anonymous/...` value is also the cache identifier passed to `on_cache_sav
 
 2. **Mounting**: FixtureKit loads the cached JSON file, clears each tracked table, and executes the raw SQL INSERT statements directly. No ORM instantiation, no callbacks.
 
-3. **Repository build**: FixtureKit resolves exposed records by model + id and returns a `Repository` for method-based access.
+3. **Repository build**: FixtureKit stores exposed model + id metadata and returns a `Repository` that lazily resolves records on first method access.
 
 4. **Transaction isolation**: Use framework transactions (`use_transactional_fixtures` in RSpec, `use_transactional_tests` in Minitest) so test writes roll back and cached data can be reused safely between tests.
 

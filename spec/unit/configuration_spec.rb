@@ -3,6 +3,12 @@
 require "spec_helper"
 
 RSpec.describe FixtureKit::Configuration do
+  describe "#callbacks" do
+    it "returns a callback registry" do
+      expect(described_class.new.callbacks).to be_a(FixtureKit::Callbacks)
+    end
+  end
+
   describe "#fixture_path" do
     it "defaults to fixture_kit" do
       expect(described_class.new.fixture_path).to eq("fixture_kit")
@@ -32,30 +38,82 @@ RSpec.describe FixtureKit::Configuration do
   end
 
   describe "#on_cache_save" do
-    it "defaults to nil" do
-      expect(described_class.new.on_cache_save).to be_nil
+    it "defaults to an empty callback list" do
+      expect(described_class.new.on_cache_save).to eq([])
     end
 
-    it "returns an explicitly configured proc" do
-      callback = proc {}
+    it "registers and runs callbacks in order" do
       configuration = described_class.new
-      configuration.on_cache_save = callback
+      callback_one = spy("callback_one")
+      callback_two = spy("callback_two")
 
-      expect(configuration.on_cache_save).to eq(callback)
+      configuration.on_cache_save { |identifier| callback_one.call(identifier) }
+      configuration.on_cache_save { |identifier| callback_two.call(identifier) }
+
+      expect(callback_one).to receive(:call).with("teams/basic").ordered
+      expect(callback_two).to receive(:call).with("teams/basic").ordered
+
+      configuration.callbacks.run(:cache_save, "teams/basic")
+    end
+  end
+
+  describe "#on_cache_saved" do
+    it "defaults to an empty callback list" do
+      expect(described_class.new.on_cache_saved).to eq([])
+    end
+
+    it "registers and runs callbacks in order with identifier and duration" do
+      configuration = described_class.new
+      callback_one = spy("callback_one")
+      callback_two = spy("callback_two")
+
+      configuration.on_cache_saved { |identifier, duration| callback_one.call(identifier, duration) }
+      configuration.on_cache_saved { |identifier, duration| callback_two.call(identifier, duration) }
+
+      expect(callback_one).to receive(:call).with("teams/basic", 0.25).ordered
+      expect(callback_two).to receive(:call).with("teams/basic", 0.25).ordered
+
+      configuration.callbacks.run(:cache_saved, "teams/basic", 0.25)
     end
   end
 
   describe "#on_cache_mount" do
-    it "defaults to nil" do
-      expect(described_class.new.on_cache_mount).to be_nil
+    it "defaults to an empty callback list" do
+      expect(described_class.new.on_cache_mount).to eq([])
     end
 
-    it "returns an explicitly configured proc" do
-      callback = proc {}
+    it "registers and runs callbacks in order" do
       configuration = described_class.new
-      configuration.on_cache_mount = callback
+      callback_one = spy("callback_one")
+      callback_two = spy("callback_two")
 
-      expect(configuration.on_cache_mount).to eq(callback)
+      configuration.on_cache_mount { |identifier| callback_one.call(identifier) }
+      configuration.on_cache_mount { |identifier| callback_two.call(identifier) }
+
+      expect(callback_one).to receive(:call).with("teams/basic").ordered
+      expect(callback_two).to receive(:call).with("teams/basic").ordered
+
+      configuration.callbacks.run(:cache_mount, "teams/basic")
+    end
+  end
+
+  describe "#on_cache_mounted" do
+    it "defaults to an empty callback list" do
+      expect(described_class.new.on_cache_mounted).to eq([])
+    end
+
+    it "registers and runs callbacks in order with identifier and duration" do
+      configuration = described_class.new
+      callback_one = spy("callback_one")
+      callback_two = spy("callback_two")
+
+      configuration.on_cache_mounted { |identifier, duration| callback_one.call(identifier, duration) }
+      configuration.on_cache_mounted { |identifier, duration| callback_two.call(identifier, duration) }
+
+      expect(callback_one).to receive(:call).with("teams/basic", 0.15).ordered
+      expect(callback_two).to receive(:call).with("teams/basic", 0.15).ordered
+
+      configuration.callbacks.run(:cache_mounted, "teams/basic", 0.15)
     end
   end
 end

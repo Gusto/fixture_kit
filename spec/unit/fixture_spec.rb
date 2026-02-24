@@ -25,65 +25,92 @@ RSpec.describe FixtureKit::Fixture do
   end
 
   describe "#cache" do
-    it "calls on_cache_save before saving when generating cache for the first time" do
+    it "calls save callbacks around cache generation" do
       fixture = described_class.new(fixture_identifier, definition)
-      callback = spy("on_cache_save")
-      configuration.on_cache_save = callback
+      on_cache_save = spy("on_cache_save")
+      on_cache_saved = spy("on_cache_saved")
+      configuration.on_cache_save { |identifier| on_cache_save.call(identifier) }
+      configuration.on_cache_saved { |identifier, duration| on_cache_saved.call(identifier, duration) }
+      allow(Benchmark).to receive(:realtime) do |&block|
+        block.call
+        0.4
+      end
 
-      expect(callback).to receive(:call).with(cache_identifier).ordered
+      expect(on_cache_save).to receive(:call).with(cache_identifier).ordered
       expect(cache).to receive(:save).ordered
+      expect(on_cache_saved).to receive(:call).with(cache_identifier, be_within(0.001).of(0.4)).ordered
 
       fixture.cache
     end
 
-    it "does not call on_cache_save when cache already exists and force is false" do
+    it "does not call save callbacks when cache already exists and force is false" do
       fixture = described_class.new(fixture_identifier, definition)
-      callback = spy("on_cache_save")
-      configuration.on_cache_save = callback
+      on_cache_save = spy("on_cache_save")
+      on_cache_saved = spy("on_cache_saved")
+      configuration.on_cache_save { |identifier| on_cache_save.call(identifier) }
+      configuration.on_cache_saved { |identifier, duration| on_cache_saved.call(identifier, duration) }
       allow(cache).to receive(:exists?).and_return(true)
 
       fixture.cache
 
       expect(cache).not_to have_received(:save)
-      expect(callback).not_to have_received(:call)
+      expect(on_cache_save).not_to have_received(:call)
+      expect(on_cache_saved).not_to have_received(:call)
     end
 
-    it "calls on_cache_save during forced regeneration of existing cache" do
+    it "calls save callbacks during forced regeneration of existing cache" do
       fixture = described_class.new(fixture_identifier, definition)
-      callback = spy("on_cache_save")
-      configuration.on_cache_save = callback
+      on_cache_save = spy("on_cache_save")
+      on_cache_saved = spy("on_cache_saved")
+      configuration.on_cache_save { |identifier| on_cache_save.call(identifier) }
+      configuration.on_cache_saved { |identifier, duration| on_cache_saved.call(identifier, duration) }
+      allow(Benchmark).to receive(:realtime) do |&block|
+        block.call
+        0.25
+      end
       allow(cache).to receive(:exists?).and_return(true)
 
-      expect(callback).to receive(:call).with(cache_identifier).ordered
+      expect(on_cache_save).to receive(:call).with(cache_identifier).ordered
       expect(cache).to receive(:save).ordered
+      expect(on_cache_saved).to receive(:call).with(cache_identifier, be_within(0.001).of(0.25)).ordered
 
       fixture.cache(force: true)
     end
   end
 
   describe "#mount" do
-    it "calls on_cache_mount before loading cache" do
+    it "calls mount callbacks around cache loading" do
       fixture = described_class.new(fixture_identifier, definition)
-      callback = spy("on_cache_mount")
-      configuration.on_cache_mount = callback
+      on_cache_mount = spy("on_cache_mount")
+      on_cache_mounted = spy("on_cache_mounted")
+      configuration.on_cache_mount { |identifier| on_cache_mount.call(identifier) }
+      configuration.on_cache_mounted { |identifier, duration| on_cache_mounted.call(identifier, duration) }
+      allow(Benchmark).to receive(:realtime) do |&block|
+        block.call
+        0.3
+      end
       allow(cache).to receive(:exists?).and_return(true)
 
-      expect(callback).to receive(:call).with(cache_identifier).ordered
+      expect(on_cache_mount).to receive(:call).with(cache_identifier).ordered
       expect(cache).to receive(:load).ordered
+      expect(on_cache_mounted).to receive(:call).with(cache_identifier, be_within(0.001).of(0.3)).ordered
 
       fixture.mount
     end
 
-    it "does not call on_cache_mount when cache is missing" do
+    it "does not call mount callbacks when cache is missing" do
       fixture = described_class.new(fixture_identifier, definition)
-      callback = spy("on_cache_mount")
-      configuration.on_cache_mount = callback
+      on_cache_mount = spy("on_cache_mount")
+      on_cache_mounted = spy("on_cache_mounted")
+      configuration.on_cache_mount { |identifier| on_cache_mount.call(identifier) }
+      configuration.on_cache_mounted { |identifier, duration| on_cache_mounted.call(identifier, duration) }
 
       expect do
         fixture.mount
       end.to raise_error(FixtureKit::CacheMissingError, "Cache does not exist for fixture 'project management'")
 
-      expect(callback).not_to have_received(:call)
+      expect(on_cache_mount).not_to have_received(:call)
+      expect(on_cache_mounted).not_to have_received(:call)
     end
   end
 end
