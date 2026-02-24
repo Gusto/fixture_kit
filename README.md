@@ -1,6 +1,10 @@
 # FixtureKit
 
-Fast test fixtures with SQL caching.
+Fixture-level performance without giving up FactoryBot-style test setup.
+
+Rails fixtures are very performant. But in large companies with hundreds of models and varying Rails familiarity, maintaining a well-manicured garden of YAML files quickly becomes unrealistic.
+
+Teams reach for tools like FactoryBot to simplify test setup and keep things readable. The tradeoff is performance. FixtureKit gives you the speed wins while letting you keep the test setup tooling your teams already use, by generating and caching fixture data on-demand.
 
 - Full documentation (guides): [GitHub Wiki](https://github.com/Gusto/fixture_kit/wiki)
 - API/reference (canonical): [docs/reference.md](docs/reference.md)
