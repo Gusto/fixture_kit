@@ -176,4 +176,17 @@ RSpec.describe "FixtureKit integration" do
       puts "FKIT_ASSERT:ANONYMOUS_DUPLICATE_DECLARATION"
     end
   end
+
+  describe "fixture instance reader without declaration" do
+    it "raises a helpful error message" do
+      expect do
+        fixture
+      end.to raise_error(
+        RuntimeError,
+        "No fixture declared for this example group. Use `fixture \"name\"` in your describe/context block."
+      )
+
+      puts "FKIT_ASSERT:UNDECLARED_FIXTURE_READER"
+    end
+  end
 end
