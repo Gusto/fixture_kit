@@ -56,6 +56,15 @@ RSpec.describe FixtureKit::SqlSubscriber do
 
       expect(models).to include(User)
     end
+
+    it "resolves STI subclasses to their base table-owning model" do
+      models = described_class.capture do
+        Car.create!(name: "Sedan", year: 2024)
+        Truck.create!(name: "Pickup", year: 2023)
+      end
+
+      expect(models).to contain_exactly(Vehicle)
+    end
   end
 
   describe "sql.active_record payload name format assumptions" do

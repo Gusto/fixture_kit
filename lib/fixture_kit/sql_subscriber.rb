@@ -20,7 +20,13 @@ module FixtureKit
 
       ActiveSupport::Notifications.subscribed(subscriber, EVENT, monotonic: true, &block)
 
-      models.to_a
+      models.map { |model| base_table_model(model) }.uniq
     end
+
+    def self.base_table_model(model)
+      model = model.superclass until model.superclass.abstract_class?
+      model
+    end
+    private_class_method :base_table_model
   end
 end
