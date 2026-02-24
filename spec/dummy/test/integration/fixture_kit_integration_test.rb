@@ -156,3 +156,15 @@ class FixtureKitAnonymousDuplicateDeclarationIntegrationTest < ActiveSupport::Te
     puts "FKIT_ASSERT:ANONYMOUS_DUPLICATE_DECLARATION"
   end
 end
+
+class FixtureKitUndeclaredFixtureReaderIntegrationTest < ActiveSupport::TestCase
+  test "raises a helpful error message when fixture is called without declaration" do
+    error = assert_raises(RuntimeError) { fixture }
+
+    assert_equal(
+      "No fixture declared for this test class. Use `fixture \"name\"` in your test class.",
+      error.message
+    )
+    puts "FKIT_ASSERT:UNDECLARED_FIXTURE_READER"
+  end
+end
