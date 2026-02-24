@@ -54,9 +54,9 @@ module FixtureKit
     end
 
     def save
-      FixtureKit.runner.adapter.execute do
+      FixtureKit.runner.adapter.execute do |context|
         models = SqlSubscriber.capture do
-          fixture.definition.evaluate
+          fixture.definition.evaluate(context)
         end
 
         @data = {

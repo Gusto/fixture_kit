@@ -10,8 +10,9 @@ module FixtureKit
       @exposed = {}
     end
 
-    def evaluate
-      instance_eval(&@definition)
+    def evaluate(context)
+      context.singleton_class.prepend(mixin)
+      context.instance_exec(&@definition)
     end
 
     def expose(**records)
@@ -21,6 +22,18 @@ module FixtureKit
         end
 
         @exposed[name] = record
+      end
+    end
+
+    private
+
+    def mixin
+      definition = self
+
+      Module.new do
+        define_method(:expose) do |**records|
+          definition.expose(**records)
+        end
       end
     end
   end

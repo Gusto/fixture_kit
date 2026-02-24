@@ -9,7 +9,23 @@ RSpec.describe FixtureKit::Definition do
         expose(alice: "alice")
       end
 
-      definition.evaluate
+      definition.evaluate(Object.new)
+
+      expect(definition.exposed).to eq({ alice: "alice" })
+    end
+
+    it "supports helper methods from execution context" do
+      helper_context = Class.new do
+        def fixture_name
+          "alice"
+        end
+      end.new
+
+      definition = described_class.new do
+        expose(alice: fixture_name)
+      end
+
+      definition.evaluate(helper_context)
 
       expect(definition.exposed).to eq({ alice: "alice" })
     end
@@ -23,7 +39,7 @@ RSpec.describe FixtureKit::Definition do
       end
 
       expect do
-        definition.evaluate
+        definition.evaluate(Object.new)
       end.to raise_error(FixtureKit::DuplicateNameError, "Name alice already exposed")
     end
   end

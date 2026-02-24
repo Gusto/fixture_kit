@@ -8,11 +8,10 @@ module FixtureKit
       previous_example = ::RSpec.current_example
       previous_scope = ::RSpec.current_scope
       example_group = build_example_group
-      example = example_group.example { block.call }
-      instance = example_group.new
+      example = example_group.example { block.call(self) }
       succeeded =
         begin
-          example.run(instance, ::RSpec::Core::NullReporter)
+          example.run(example_group.new, ::RSpec::Core::NullReporter)
         ensure
           ::RSpec.current_example = previous_example
           ::RSpec.current_scope = previous_scope

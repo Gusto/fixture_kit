@@ -11,7 +11,7 @@ module FixtureKit
     def execute(&block)
       test_class = build_test_class
       test_method = test_class.test(TEST_NAME) do
-        block.call
+        block.call(self)
         pass
       end
 
