@@ -2,27 +2,16 @@
 
 module FixtureKit
   class Configuration
-    attr_writer :fixture_path
-    attr_writer :cache_path
-    attr_accessor :on_cache_save
-    attr_accessor :on_cache_mount
-    attr_reader :adapter_options
+    attr_accessor :fixture_path
+    attr_accessor :cache_path
+    attr_reader :adapter_options, :callbacks
 
     def initialize
       @fixture_path = "fixture_kit"
-      @cache_path = nil
+      @cache_path = "tmp/cache/fixture_kit"
       @adapter_class = FixtureKit::MinitestAdapter
       @adapter_options = {}
-      @on_cache_save = nil
-      @on_cache_mount = nil
-    end
-
-    def fixture_path
-      @fixture_path
-    end
-
-    def cache_path
-      @cache_path ||= detect_cache_path
+      @callbacks = Callbacks.new
     end
 
     def adapter(adapter_class = nil, **options)
@@ -32,10 +21,20 @@ module FixtureKit
       @adapter_options = options
     end
 
-    private
+    def on_cache_save(&block)
+      callbacks.register(:cache_save, &block)
+    end
 
-    def detect_cache_path
-      "tmp/cache/fixture_kit"
+    def on_cache_saved(&block)
+      callbacks.register(:cache_saved, &block)
+    end
+
+    def on_cache_mount(&block)
+      callbacks.register(:cache_mount, &block)
+    end
+
+    def on_cache_mounted(&block)
+      callbacks.register(:cache_mounted, &block)
     end
   end
 end

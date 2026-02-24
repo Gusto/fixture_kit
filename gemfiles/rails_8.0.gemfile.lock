@@ -4,6 +4,7 @@ PATH
     fixture_kit (0.7.0)
       activerecord (>= 8.0)
       activesupport (>= 8.0)
+      benchmark
 
 GEM
   remote: https://rubygems.org/

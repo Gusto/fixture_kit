@@ -23,6 +23,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "activesupport", ">= 8.0"
   spec.add_dependency "activerecord", ">= 8.0"
+  spec.add_dependency "benchmark"
 
   spec.add_development_dependency "irb"
   spec.add_development_dependency "appraisal"
