@@ -67,10 +67,10 @@ RSpec.describe "Dummy app integration" do
       "FKIT_ASSERT:ROLLBACK_SECOND_EXAMPLE",
       "FKIT_ASSERT:ANONYMOUS_FIXTURE",
       "FKIT_ASSERT:ANONYMOUS_CACHE_PATH",
+      "FKIT_ASSERT:ANONYMOUS_HELPER_METHODS",
       "FKIT_ASSERT:ANONYMOUS_NESTED_OVERRIDE",
       "FKIT_ASSERT:ANONYMOUS_DUPLICATE_DECLARATION"
     ]
-    expected_markers << "FKIT_ASSERT:ANONYMOUS_HELPER_METHODS" if INTEGRATION_FRAMEWORK == "rspec"
 
     expected_markers.each do |marker|
       expect(output).to include(marker), "Expected marker #{marker.inspect} in output.\nOutput:\n#{output}"

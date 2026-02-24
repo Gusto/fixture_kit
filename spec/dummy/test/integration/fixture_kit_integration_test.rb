@@ -111,6 +111,18 @@ class FixtureKitAnonymousFixtureIntegrationTest < ActiveSupport::TestCase
   end
 end
 
+class FixtureKitAnonymousHelperMethodsIntegrationTest < ActiveSupport::TestCase
+  fixture do
+    helper_user = User.create!(name: "Helper User", email: custom_helper_method)
+    expose(helper_user: helper_user)
+  end
+
+  test "can call ActiveSupport::TestCase helper methods during fixture generation" do
+    assert_equal "helper.fixture@example.com", fixture.helper_user.email
+    puts "FKIT_ASSERT:ANONYMOUS_HELPER_METHODS"
+  end
+end
+
 class FixtureKitAnonymousParentFixtureIntegrationTest < ActiveSupport::TestCase
   fixture "teams/basic"
 end

@@ -109,4 +109,8 @@ end
 
 class ActiveSupport::TestCase
   self.use_transactional_tests = true
+
+  def custom_helper_method
+    "helper.fixture@example.com"
+  end
 end
