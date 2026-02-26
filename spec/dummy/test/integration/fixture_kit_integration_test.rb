@@ -123,6 +123,49 @@ class FixtureKitAnonymousHelperMethodsIntegrationTest < ActiveSupport::TestCase
   end
 end
 
+class FixtureKitInheritanceIntegrationTest < ActiveSupport::TestCase
+  fixture "inheritance/grandchild"
+
+  test "supports inheritance chains without auto-exposing parent records" do
+    assert_equal 1, User.count
+    assert_equal 1, Project.count
+    assert_equal 1, Task.count
+    assert_equal "Inherited Task", fixture.task.title
+    assert_equal "Inherited Project", fixture.task.project.name
+    assert_equal "inheritance.owner@example.com", fixture.task.project.owner.email
+    assert_raises(NoMethodError) { fixture.project }
+
+    puts "FKIT_ASSERT:INHERITANCE_CHAIN"
+  end
+end
+
+class FixtureKitInlineInheritanceIntegrationTest < ActiveSupport::TestCase
+  fixture(extends: "inheritance/base") do
+    project = Project.create!(name: "Inline Inherited Project", owner: parent.owner)
+    expose(project: project)
+  end
+
+  test "supports inline inheritance from named fixtures" do
+    assert_equal 1, User.count
+    assert_equal 1, Project.count
+    assert_equal "Inline Inherited Project", fixture.project.name
+    assert_equal "inheritance.owner@example.com", fixture.project.owner.email
+    assert_raises(NoMethodError) { fixture.owner }
+
+    puts "FKIT_ASSERT:INLINE_INHERITANCE"
+  end
+end
+
+class FixtureKitCircularInheritanceIntegrationTest < ActiveSupport::TestCase
+  test "raises a custom error for circular inheritance chains" do
+    assert_raises(FixtureKit::CircularFixtureInheritance) do
+      FixtureKit.runner.register("inheritance/circular_a", Object.new)
+    end
+
+    puts "FKIT_ASSERT:CIRCULAR_INHERITANCE"
+  end
+end
+
 class FixtureKitAnonymousParentFixtureIntegrationTest < ActiveSupport::TestCase
   fixture "teams/basic"
 end

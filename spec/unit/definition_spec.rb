@@ -3,6 +3,14 @@
 require "spec_helper"
 
 RSpec.describe FixtureKit::Definition do
+  describe "#extends" do
+    it "stores parent fixture name for inherited definitions" do
+      definition = described_class.new(extends: "teams/basic") {}
+
+      expect(definition.extends).to eq("teams/basic")
+    end
+  end
+
   describe "#evaluate" do
     it "captures exposed records from the definition block" do
       definition = described_class.new do
@@ -28,6 +36,17 @@ RSpec.describe FixtureKit::Definition do
       definition.evaluate(helper_context)
 
       expect(definition.exposed).to eq({ alice: "alice" })
+    end
+
+    it "supports parent helper in execution context" do
+      parent_repository = Struct.new(:owner).new("alice")
+      definition = described_class.new do
+        expose(owner: parent.owner)
+      end
+
+      definition.evaluate(Object.new, parent: parent_repository)
+
+      expect(definition.exposed).to eq({ owner: "alice" })
     end
   end
 

@@ -15,8 +15,8 @@ module FixtureKit
       @started = false
     end
 
-    def register(scope, name = nil, &definition_block)
-      registry.add(scope, normalize_registration(name, definition_block))
+    def register(name_or_definition, scope)
+      registry.add(name_or_definition, scope)
     end
 
     def start
@@ -42,17 +42,6 @@ module FixtureKit
 
     def preserve_cache?
       ENV[PRESERVE_CACHE_ENV_KEY].to_s.match?(/\A(1|true|yes)\z/i)
-    end
-
-    def normalize_registration(name, definition_block)
-      if name && definition_block
-        raise FixtureKit::InvalidFixtureDeclaration, "cannot provide both fixture name and definition block"
-      end
-
-      name_or_block = name || definition_block
-      return name_or_block if name_or_block
-
-      raise FixtureKit::InvalidFixtureDeclaration, "must provide fixture name or definition block"
     end
   end
 end

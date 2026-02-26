@@ -3,7 +3,7 @@
 require "spec_helper"
 
 RSpec.describe FixtureKit::RSpec::ClassMethods do
-  let(:fixture_declaration) { instance_double(FixtureKit::Fixture, cache: nil) }
+  let(:fixture_declaration) { instance_double(FixtureKit::Fixture, generate: nil) }
   let(:runner) do
     instance_double(
       FixtureKit::Runner,
@@ -22,7 +22,7 @@ RSpec.describe FixtureKit::RSpec::ClassMethods do
 
       group.fixture("project_management")
 
-      expect(runner).to have_received(:register).with(group, "project_management")
+      expect(runner).to have_received(:register).with("project_management", group)
     end
 
     it "registers anonymous fixtures with the current example group as scope" do
@@ -30,7 +30,18 @@ RSpec.describe FixtureKit::RSpec::ClassMethods do
 
       group.fixture { expose(example: "record") }
 
-      expect(runner).to have_received(:register).with(group, nil)
+      expect(runner).to have_received(:register).with(kind_of(FixtureKit::Definition), group)
+    end
+
+    it "registers inherited anonymous fixtures with extends" do
+      group = build_group
+
+      group.fixture(extends: "teams/basic") { expose(example: "record") }
+
+      expect(runner).to have_received(:register).with(
+        an_object_having_attributes(class: FixtureKit::Definition, extends: "teams/basic"),
+        group
+      )
     end
 
     it "allows nested groups to register their own fixtures" do
@@ -40,8 +51,8 @@ RSpec.describe FixtureKit::RSpec::ClassMethods do
       parent_group.fixture("project_management")
       child_group.fixture("teams/basic")
 
-      expect(runner).to have_received(:register).with(parent_group, "project_management")
-      expect(runner).to have_received(:register).with(child_group, "teams/basic")
+      expect(runner).to have_received(:register).with("project_management", parent_group)
+      expect(runner).to have_received(:register).with("teams/basic", child_group)
     end
 
     it "attaches a before context hook to generate cache for the declared fixture" do
@@ -55,7 +66,7 @@ RSpec.describe FixtureKit::RSpec::ClassMethods do
       group = build_group
       group.fixture("project_management")
 
-      expect(fixture_declaration).to receive(:cache)
+      expect(fixture_declaration).to receive(:generate)
 
       run_before_context_hook(group)
     end

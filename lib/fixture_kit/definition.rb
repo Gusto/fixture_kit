@@ -2,16 +2,16 @@
 
 module FixtureKit
   class Definition
-    attr_reader :exposed, :source_location
+    attr_reader :exposed, :extends
 
-    def initialize(&definition)
+    def initialize(extends: nil, &definition)
       @definition = definition
-      @source_location = definition.source_location
       @exposed = {}
+      @extends = extends
     end
 
-    def evaluate(context)
-      context.singleton_class.prepend(mixin)
+    def evaluate(context, parent: nil)
+      context.singleton_class.prepend(mixin(parent))
       context.instance_exec(&@definition)
     end
 
@@ -27,12 +27,16 @@ module FixtureKit
 
     private
 
-    def mixin
+    def mixin(parent)
       definition = self
 
       Module.new do
         define_method(:expose) do |**records|
           definition.expose(**records)
+        end
+
+        define_method(:parent) do
+          parent
         end
       end
     end

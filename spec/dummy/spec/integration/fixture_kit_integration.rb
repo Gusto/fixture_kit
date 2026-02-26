@@ -161,6 +161,49 @@ RSpec.describe "FixtureKit integration" do
     end
   end
 
+  describe "fixture inheritance" do
+    fixture "inheritance/grandchild"
+
+    it "supports inheritance chains without auto-exposing parent records" do
+      expect(User.count).to eq(1)
+      expect(Project.count).to eq(1)
+      expect(Task.count).to eq(1)
+      expect(fixture.task.title).to eq("Inherited Task")
+      expect(fixture.task.project.name).to eq("Inherited Project")
+      expect(fixture.task.project.owner.email).to eq("inheritance.owner@example.com")
+      expect { fixture.project }.to raise_error(NoMethodError)
+
+      puts "FKIT_ASSERT:INHERITANCE_CHAIN"
+    end
+  end
+
+  describe "inline fixture inheritance" do
+    fixture(extends: "inheritance/base") do
+      project = Project.create!(name: "Inline Inherited Project", owner: parent.owner)
+      expose(project: project)
+    end
+
+    it "supports inline inheritance from named fixtures" do
+      expect(User.count).to eq(1)
+      expect(Project.count).to eq(1)
+      expect(fixture.project.name).to eq("Inline Inherited Project")
+      expect(fixture.project.owner.email).to eq("inheritance.owner@example.com")
+      expect { fixture.owner }.to raise_error(NoMethodError)
+
+      puts "FKIT_ASSERT:INLINE_INHERITANCE"
+    end
+  end
+
+  describe "circular fixture inheritance" do
+    it "raises a custom error for circular inheritance chains" do
+      expect do
+        FixtureKit.runner.register("inheritance/circular_a", Object.new)
+      end.to raise_error(FixtureKit::CircularFixtureInheritance)
+
+      puts "FKIT_ASSERT:CIRCULAR_INHERITANCE"
+    end
+  end
+
   describe "duplicate fixture declarations" do
     it "raises when declaring fixture twice in the same context" do
       expect do

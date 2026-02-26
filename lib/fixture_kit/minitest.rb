@@ -8,8 +8,10 @@ module FixtureKit
     DECLARATION_CLASS_ATTRIBUTE = :fixture_kit_declaration
 
     module ClassMethods
-      def fixture(name = nil, &definition_block)
-        self.fixture_kit_declaration = FixtureKit.runner.register(self, name, &definition_block)
+      def fixture(name = nil, extends: nil, &block)
+        definition = Definition.new(extends: extends, &block) if block_given?
+        declaration = FixtureKit.runner.register(name || definition, self)
+        self.fixture_kit_declaration = declaration
       end
 
       def run_suite(reporter, options = {})
@@ -17,7 +19,7 @@ module FixtureKit
         if declaration && !filter_runnable_methods(options).empty?
           runner = FixtureKit.runner
           runner.start unless runner.started?
-          declaration.cache
+          declaration.generate
         end
 
         super

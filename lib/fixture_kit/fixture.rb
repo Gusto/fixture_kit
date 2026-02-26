@@ -6,16 +6,22 @@ module FixtureKit
   class Fixture
     include ConfigurationHelper
 
-    attr_reader :identifier, :definition
+    attr_reader :identifier, :definition, :parent, :cache
 
     def initialize(identifier, definition)
       @identifier = identifier
       @definition = definition
       @cache = Cache.new(self)
+
+      if definition.extends
+        @parent = FixtureKit.runner.registry.add(definition.extends)
+      end
     end
 
-    def cache(force: false)
+    def generate(force: false)
       return if @cache.exists? && !force
+
+      parent&.generate
 
       emit(:cache_save)
       emit(:cache_saved) { @cache.save }
