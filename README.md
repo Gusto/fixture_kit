@@ -96,10 +96,11 @@ end
    ```sh
    bundle install
    cd spec/dummy && bundle install && cd ../..
+   bundle exec appraisal install
    ```
 3. Commit and push to main:
    ```sh
-   git add lib/fixture_kit/version.rb spec/dummy/Gemfile.lock
+   git add lib/fixture_kit/version.rb spec/dummy/Gemfile.lock gemfiles/*.gemfile.lock
    git commit -m "Release vX.Y.Z"
    git push
    ```
