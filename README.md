@@ -89,6 +89,25 @@ end
 - ActiveRecord >= 8.0
 - ActiveSupport >= 8.0
 
+## Releasing
+
+1. Bump the version in `lib/fixture_kit/version.rb`
+2. Update lockfiles:
+   ```sh
+   bundle install
+   cd spec/dummy && bundle install && cd ../..
+   ```
+3. Commit and push to main:
+   ```sh
+   git add lib/fixture_kit/version.rb spec/dummy/Gemfile.lock
+   git commit -m "Release vX.Y.Z"
+   git push
+   ```
+4. Create a GitHub release:
+   ```sh
+   gh release create vX.Y.Z --title "vX.Y.Z" --target main --notes "Release notes here"
+   ```
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
