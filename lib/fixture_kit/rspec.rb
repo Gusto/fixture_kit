@@ -35,6 +35,10 @@ module FixtureKit
         prepend_before(:context) do
           self.class.metadata[DECLARATION_METADATA_KEY].generate
         end
+
+        append_after(:context) do
+          self.class.metadata[DECLARATION_METADATA_KEY].finish
+        end
       end
     end
 

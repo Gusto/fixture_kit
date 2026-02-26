@@ -1,14 +1,10 @@
 # frozen_string_literal: true
 
-require "json"
-require "fileutils"
 require "active_support/core_ext/array/wrap"
-require "active_support/inflector"
 
 module FixtureKit
   class Cache
     ANONYMOUS_DIRECTORY = "_anonymous"
-    MemoryData = Data.define(:records, :exposed)
 
     include ConfigurationHelper
 
@@ -19,7 +15,7 @@ module FixtureKit
     end
 
     def path
-      File.join(configuration.cache_path, "#{identifier}.json")
+      file_cache.path
     end
 
     def identifier
@@ -34,7 +30,11 @@ module FixtureKit
     end
 
     def exists?
-      data || File.exist?(path)
+      data || file_cache.exists?
+    end
+
+    def clear_memory
+      @data = nil
     end
 
     def load
@@ -42,7 +42,7 @@ module FixtureKit
         raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{fixture.identifier}'"
       end
 
-      @data ||= load_memory_data
+      @data ||= file_cache.read
       statements_by_connection(data.records).each do |connection, statements|
         connection.disable_referential_integrity do
           # execute_batch is private in current supported Rails versions.
@@ -64,16 +64,22 @@ module FixtureKit
           captured_models.concat(fixture.parent.cache.data.records.keys)
         end
 
-        @data = MemoryData.new(
+        @data = MemoryCache.new(
           records: generate_statements(captured_models),
-          exposed: build_exposed_mapping(fixture.definition.exposed)
+          exposed: file_cache.serialize_exposed(fixture.definition.exposed)
         )
       end
 
-      save_file_data
+      file_cache.write(data)
     end
 
     private
+
+    def file_cache
+      @file_cache ||= FileCache.new(
+        File.join(configuration.cache_path, "#{identifier}.json")
+      )
+    end
 
     def generate_statements(models)
       models.uniq.each_with_object({}) do |model, statements|
@@ -104,16 +110,6 @@ module FixtureKit
       "INSERT INTO #{quoted_table} (#{quoted_columns.join(", ")}) VALUES #{rows.join(", ")}"
     end
 
-    def build_exposed_mapping(exposed)
-      exposed.each_with_object({}) do |(name, record), hash|
-        if record.is_a?(Array)
-          hash[name] = record.map { |record| { record.class => record.id } }
-        else
-          hash[name] = { record.class => record.id }
-        end
-      end
-    end
-
     def statements_by_connection(records)
       deleted_tables = Set.new
 
@@ -128,28 +124,6 @@ module FixtureKit
 
         grouped[connection] << sql if sql
       end
-    end
-
-    def load_memory_data
-      file_data = JSON.parse(File.read(path))
-      records = file_data.fetch("records").transform_keys do |model_name|
-        ActiveSupport::Inflector.constantize(model_name)
-      end
-
-      exposed = file_data.fetch("exposed").each_with_object({}) do |(name, value), hash|
-        if value.is_a?(Array)
-          hash[name.to_sym] = value.map { |r| { ActiveSupport::Inflector.constantize(r.keys.first) => r.values.first } }
-        else
-          hash[name.to_sym] = { ActiveSupport::Inflector.constantize(value.keys.first) => value.values.first }
-        end
-      end
-
-      MemoryData.new(records: records, exposed: exposed)
-    end
-
-    def save_file_data
-      FileUtils.mkdir_p(File.dirname(path))
-      File.write(path, JSON.pretty_generate(data.to_h))
     end
   end
 end

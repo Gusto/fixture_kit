@@ -4,7 +4,7 @@ require "spec_helper"
 require "fixture_kit/minitest"
 
 RSpec.describe FixtureKit::Minitest::ClassMethods do
-  let(:fixture_declaration) { instance_double(FixtureKit::Fixture, generate: nil, mount: :repository) }
+  let(:fixture_declaration) { instance_double(FixtureKit::Fixture, generate: nil, mount: :repository, finish: nil) }
   let(:runner) do
     instance_double(
       FixtureKit::Runner,
@@ -91,6 +91,37 @@ RSpec.describe FixtureKit::Minitest::ClassMethods do
 
       expect(runner).not_to receive(:start)
       expect(fixture_declaration).to receive(:generate)
+
+      test_case.run_suite(reporter, {})
+    ensure
+      Minitest::Runnable.runnables.delete(test_case)
+    end
+
+    it "calls finish on the declaration after tests run" do
+      allow(runner).to receive(:started?).and_return(true)
+      test_case = Class.new(ActiveSupport::TestCase) do
+        test "noop" do
+          assert true
+        end
+      end
+      test_case.fixture_kit_declaration = fixture_declaration
+      reporter = build_reporter
+      allow(test_case).to receive(:filter_runnable_methods).with({}).and_return(["test_noop"])
+
+      expect(fixture_declaration).to receive(:finish)
+
+      test_case.run_suite(reporter, {})
+    ensure
+      Minitest::Runnable.runnables.delete(test_case)
+    end
+
+    it "calls finish even when there are no runnable methods" do
+      test_case = Class.new(ActiveSupport::TestCase)
+      test_case.fixture_kit_declaration = fixture_declaration
+      reporter = build_reporter
+      allow(test_case).to receive(:filter_runnable_methods).with({}).and_return([])
+
+      expect(fixture_declaration).to receive(:finish)
 
       test_case.run_suite(reporter, {})
     ensure

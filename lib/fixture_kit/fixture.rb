@@ -36,7 +36,15 @@ module FixtureKit
       emit(:cache_mounted) { @cache.load }
     end
 
+    def finish
+      @cache.clear_memory if anonymous?
+    end
+
     private
+
+    def anonymous?
+      !identifier.is_a?(String)
+    end
 
     def emit(event)
       cache_identifier = @cache.identifier

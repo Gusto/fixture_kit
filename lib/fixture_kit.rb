@@ -21,6 +21,8 @@ module FixtureKit
   autoload :Repository, File.expand_path("fixture_kit/repository", __dir__)
   autoload :SqlSubscriber, File.expand_path("fixture_kit/sql_subscriber", __dir__)
   autoload :Cache, File.expand_path("fixture_kit/cache", __dir__)
+  autoload :FileCache, File.expand_path("fixture_kit/file_cache", __dir__)
+  autoload :MemoryCache, File.expand_path("fixture_kit/memory_cache", __dir__)
   autoload :Runner, File.expand_path("fixture_kit/runner", __dir__)
   autoload :Adapter, File.expand_path("fixture_kit/adapter", __dir__)
   autoload :MinitestAdapter, File.expand_path("fixture_kit/adapters/minitest_adapter", __dir__)
