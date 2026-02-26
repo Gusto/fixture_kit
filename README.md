@@ -105,7 +105,7 @@ end
    ```
 4. Create a GitHub release:
    ```sh
-   gh release create vX.Y.Z --title "vX.Y.Z" --target main --notes "Release notes here"
+   gh release create vX.Y.Z --title "vX.Y.Z" --target main --generate-notes
    ```
 
 ## License
