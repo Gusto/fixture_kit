@@ -33,6 +33,7 @@ module FixtureKit
         metadata[DECLARATION_METADATA_KEY] = declaration
 
         prepend_before(:context) do
+          raise "FIXTURE_KIT_TEST: intentional error in prepend_before(:context)"
           self.class.metadata[DECLARATION_METADATA_KEY].generate
         end
 
