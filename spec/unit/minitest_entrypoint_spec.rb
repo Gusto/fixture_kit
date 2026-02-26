@@ -4,7 +4,7 @@ require "spec_helper"
 require "fixture_kit/minitest"
 
 RSpec.describe FixtureKit::Minitest::ClassMethods do
-  let(:fixture_declaration) { instance_double(FixtureKit::Fixture, cache: nil, mount: :repository) }
+  let(:fixture_declaration) { instance_double(FixtureKit::Fixture, generate: nil, mount: :repository) }
   let(:runner) do
     instance_double(
       FixtureKit::Runner,
@@ -24,7 +24,7 @@ RSpec.describe FixtureKit::Minitest::ClassMethods do
 
       test_case.fixture("project_management")
 
-      expect(runner).to have_received(:register).with(test_case, "project_management")
+      expect(runner).to have_received(:register).with("project_management", test_case)
     end
 
     it "registers anonymous fixtures with the current test class as scope" do
@@ -32,7 +32,18 @@ RSpec.describe FixtureKit::Minitest::ClassMethods do
 
       test_case.fixture { expose(example: "record") }
 
-      expect(runner).to have_received(:register).with(test_case, nil)
+      expect(runner).to have_received(:register).with(kind_of(FixtureKit::Definition), test_case)
+    end
+
+    it "registers inherited anonymous fixtures with extends" do
+      test_case = build_test_case
+
+      test_case.fixture(extends: "teams/basic") { expose(example: "record") }
+
+      expect(runner).to have_received(:register).with(
+        an_object_having_attributes(class: FixtureKit::Definition, extends: "teams/basic"),
+        test_case
+      )
     end
 
     it "allows subclasses to register their own fixtures" do
@@ -42,8 +53,8 @@ RSpec.describe FixtureKit::Minitest::ClassMethods do
       parent_test_case.fixture("project_management")
       child_test_case.fixture("teams/basic")
 
-      expect(runner).to have_received(:register).with(parent_test_case, "project_management")
-      expect(runner).to have_received(:register).with(child_test_case, "teams/basic")
+      expect(runner).to have_received(:register).with("project_management", parent_test_case)
+      expect(runner).to have_received(:register).with("teams/basic", child_test_case)
     end
   end
 
@@ -60,7 +71,7 @@ RSpec.describe FixtureKit::Minitest::ClassMethods do
 
       expect(runner).to receive(:started?).and_return(false).ordered
       expect(runner).to receive(:start).ordered
-      expect(fixture_declaration).to receive(:cache).ordered
+      expect(fixture_declaration).to receive(:generate).ordered
 
       test_case.run_suite(reporter, {})
     ensure
@@ -79,7 +90,7 @@ RSpec.describe FixtureKit::Minitest::ClassMethods do
       allow(test_case).to receive(:filter_runnable_methods).with({}).and_return(["test_noop"])
 
       expect(runner).not_to receive(:start)
-      expect(fixture_declaration).to receive(:cache)
+      expect(fixture_declaration).to receive(:generate)
 
       test_case.run_suite(reporter, {})
     ensure
@@ -93,7 +104,7 @@ RSpec.describe FixtureKit::Minitest::ClassMethods do
       allow(test_case).to receive(:filter_runnable_methods).with({}).and_return([])
 
       expect(runner).not_to receive(:start)
-      expect(fixture_declaration).not_to receive(:cache)
+      expect(fixture_declaration).not_to receive(:generate)
 
       test_case.run_suite(reporter, {})
     ensure

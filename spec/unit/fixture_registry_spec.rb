@@ -18,7 +18,7 @@ RSpec.describe FixtureKit::Registry do
       registry = described_class.new
       scope = Class.new
 
-      fixture = registry.add(scope, "project_management")
+      fixture = registry.add("project_management", scope)
 
       expect(fixture).to be_a(FixtureKit::Fixture)
       expect(fixture.identifier).to eq("project_management")
@@ -29,8 +29,8 @@ RSpec.describe FixtureKit::Registry do
       first_scope = Class.new
       second_scope = Class.new
 
-      first = registry.add(first_scope, "project_management")
-      second = registry.add(second_scope, "project_management")
+      first = registry.add("project_management", first_scope)
+      second = registry.add("project_management", second_scope)
 
       expect(second).to equal(first)
     end
@@ -38,8 +38,9 @@ RSpec.describe FixtureKit::Registry do
     it "creates an anonymous fixture from a definition block" do
       registry = described_class.new
       scope = Class.new
+      definition = FixtureKit::Definition.new { expose(example: "record") }
 
-      fixture = registry.add(scope, proc { expose(example: "record") })
+      fixture = registry.add(definition, scope)
 
       expect(fixture).to be_a(FixtureKit::Fixture)
       expect(fixture.identifier).to equal(scope)
@@ -48,10 +49,10 @@ RSpec.describe FixtureKit::Registry do
     it "raises when declaring multiple fixtures for the same class scope" do
       registry = described_class.new
       scope = Class.new
-      registry.add(scope, "project_management")
+      registry.add("project_management", scope)
 
       expect do
-        registry.add(scope, "teams/basic")
+        registry.add("teams/basic", scope)
       end.to raise_error(
         FixtureKit::MultipleFixtures,
         "cannot load multiple fixtures in the same context"
@@ -65,10 +66,10 @@ RSpec.describe FixtureKit::Registry do
           { location: "spec/models/user_spec.rb:3" }
         end
       end
-      registry.add(scope, "project_management")
+      registry.add("project_management", scope)
 
       expect do
-        registry.add(scope, "teams/basic")
+        registry.add("teams/basic", scope)
       end.to raise_error(
         FixtureKit::MultipleFixtures,
         "cannot load multiple fixtures in the same context"
@@ -80,7 +81,7 @@ RSpec.describe FixtureKit::Registry do
       scope = Class.new
 
       expect do
-        registry.add(scope, "does/not_exist")
+        registry.add("does/not_exist", scope)
       end.to raise_error(
         FixtureKit::FixtureDefinitionNotFound,
         /cannot find fixture definition file for 'does\/not_exist'/
@@ -92,11 +93,49 @@ RSpec.describe FixtureKit::Registry do
       scope = Class.new
 
       expect do
-        registry.add(scope, nil)
+        registry.add(nil, scope)
       end.to raise_error(
         FixtureKit::InvalidFixtureDeclaration,
         "unsupported fixture declaration type: NilClass"
       )
+    end
+
+    it "raises for circular named fixture inheritance" do
+      registry = described_class.new
+      scope = Class.new
+
+      expect do
+        registry.add("inheritance/circular_a", scope)
+      end.to raise_error(FixtureKit::CircularFixtureInheritance)
+    end
+
+    it "raises for inline inheritance that points to a circular named chain" do
+      registry = described_class.new
+      scope = Class.new
+
+      expect do
+        registry.add(FixtureKit::Definition.new(extends: "inheritance/circular_a") {}, scope)
+      end.to raise_error(FixtureKit::CircularFixtureInheritance)
+    end
+
+    it "links named fixture parents during add" do
+      registry = described_class.new
+      scope = Class.new
+
+      fixture = registry.add("inheritance/grandchild", scope)
+
+      expect(fixture.parent.identifier).to eq("inheritance/child")
+      expect(fixture.parent.parent.identifier).to eq("inheritance/base")
+    end
+
+    it "links inline fixture parent during add" do
+      registry = described_class.new
+      scope = Class.new
+      definition = FixtureKit::Definition.new(extends: "inheritance/base") { expose(example: "record") }
+
+      fixture = registry.add(definition, scope)
+
+      expect(fixture.parent.identifier).to eq("inheritance/base")
     end
   end
 end

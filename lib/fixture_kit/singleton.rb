@@ -11,8 +11,8 @@ module FixtureKit
       @runner ||= Runner.new
     end
 
-    def define(&block)
-      Definition.new(&block)
+    def define(extends: nil, &block)
+      Definition.new(extends: extends, &block)
     end
 
     def reset

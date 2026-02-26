@@ -5,7 +5,7 @@ require "spec_helper"
 RSpec.describe FixtureKit::Runner do
   let(:scope) { Class.new }
   let(:fixture_name) { "project_management" }
-  let(:fixture) { instance_double(FixtureKit::Fixture, identifier: fixture_name, cache: nil) }
+  let(:fixture) { instance_double(FixtureKit::Fixture, identifier: fixture_name, generate: nil) }
   let(:registry) { instance_double(FixtureKit::Registry, fixtures: [fixture]) }
 
   before do
@@ -79,18 +79,18 @@ RSpec.describe FixtureKit::Runner do
 
       runner.start
 
-      expect(fixture).not_to have_received(:cache)
+      expect(fixture).not_to have_received(:generate)
     end
   end
 
   describe "#register" do
-    it "adds fixtures to the registry before suite start without caching them" do
+    it "adds named fixtures to the registry before suite start without caching them" do
       runner = described_class.new
 
-      runner.register(scope, fixture_name)
+      runner.register(fixture_name, scope)
 
-      expect(registry).to have_received(:add).with(scope, fixture_name)
-      expect(fixture).not_to have_received(:cache)
+      expect(registry).to have_received(:add).with(fixture_name, scope)
+      expect(fixture).not_to have_received(:generate)
     end
 
     it "does not cache fixtures immediately after suite start" do
@@ -98,48 +98,36 @@ RSpec.describe FixtureKit::Runner do
       runner.start
 
       fixture_name = "teams/basic"
-      teams_fixture = instance_double(FixtureKit::Fixture, identifier: fixture_name, cache: nil)
-      allow(registry).to receive(:add).with(scope, fixture_name).and_return(teams_fixture)
+      teams_fixture = instance_double(FixtureKit::Fixture, identifier: fixture_name, generate: nil)
+      allow(registry).to receive(:add).with(fixture_name, scope).and_return(teams_fixture)
 
-      runner.register(scope, fixture_name)
+      runner.register(fixture_name, scope)
 
-      expect(teams_fixture).not_to have_received(:cache)
+      expect(teams_fixture).not_to have_received(:generate)
     end
 
     it "returns the fixture instance from the registry" do
       runner = described_class.new
 
-      expect(runner.register(scope, fixture_name)).to eq(fixture)
+      expect(runner.register(fixture_name, scope)).to eq(fixture)
     end
 
-    it "passes anonymous fixture definitions to the registry" do
+    it "passes definition objects to the registry" do
       runner = described_class.new
+      definition = FixtureKit::Definition.new { expose(example: "record") }
 
-      runner.register(scope) { expose(example: "record") }
+      runner.register(definition, scope)
 
-      expect(registry).to have_received(:add).with(scope, kind_of(Proc))
+      expect(registry).to have_received(:add).with(definition, scope)
     end
 
-    it "raises when both a fixture name and a definition block are provided" do
+    it "passes definitions with extends to the registry" do
       runner = described_class.new
+      definition = FixtureKit::Definition.new(extends: "teams/basic") { expose(example: "record") }
 
-      expect do
-        runner.register(scope, fixture_name) { expose(example: "record") }
-      end.to raise_error(
-        FixtureKit::InvalidFixtureDeclaration,
-        "cannot provide both fixture name and definition block"
-      )
-    end
+      runner.register(definition, scope)
 
-    it "raises when neither a fixture name nor a definition block is provided" do
-      runner = described_class.new
-
-      expect do
-        runner.register(scope)
-      end.to raise_error(
-        FixtureKit::InvalidFixtureDeclaration,
-        "must provide fixture name or definition block"
-      )
+      expect(registry).to have_received(:add).with(have_attributes(extends: "teams/basic"), scope)
     end
   end
 end

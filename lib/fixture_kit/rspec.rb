@@ -27,12 +27,13 @@ module FixtureKit
       #       end
       #     end
       #   end
-      def fixture(name = nil, &definition_block)
-        declaration = ::RSpec.configuration.fixture_kit.register(self, name, &definition_block)
+      def fixture(name = nil, extends: nil, &block)
+        definition = Definition.new(extends: extends, &block) if block_given?
+        declaration = ::RSpec.configuration.fixture_kit.register(name || definition, self)
         metadata[DECLARATION_METADATA_KEY] = declaration
 
         prepend_before(:context) do
-          self.class.metadata[DECLARATION_METADATA_KEY].cache
+          self.class.metadata[DECLARATION_METADATA_KEY].generate
         end
       end
     end

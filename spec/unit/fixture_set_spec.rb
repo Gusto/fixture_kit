@@ -8,7 +8,7 @@ RSpec.describe FixtureKit::Repository do
       user = User.create!(name: "Memoized User", email: "memoized@example.com")
       repository = described_class.new(
         {
-          "admin" => { "model" => "User", "id" => user.id }
+          admin: { User => user.id }
         }
       )
 
@@ -27,9 +27,9 @@ RSpec.describe FixtureKit::Repository do
       user_two = User.create!(name: "Array User 2", email: "array-user-2@example.com")
       repository = described_class.new(
         {
-          "users" => [
-            { "model" => "User", "id" => user_one.id },
-            { "model" => "User", "id" => user_two.id }
+          users: [
+            { User => user_one.id },
+            { User => user_two.id }
           ]
         }
       )
@@ -50,8 +50,8 @@ RSpec.describe FixtureKit::Repository do
       other_user = User.create!(name: "Other User", email: "other-user@example.com")
       repository = described_class.new(
         {
-          "user" => { "model" => "User", "id" => user.id },
-          "other_user" => { "model" => "User", "id" => other_user.id }
+          user: { User => user.id },
+          other_user: { User => other_user.id }
         }
       )
 
@@ -64,7 +64,7 @@ RSpec.describe FixtureKit::Repository do
     it "returns nil when exposed record cannot be loaded" do
       repository = described_class.new(
         {
-          "missing_user" => { "model" => "User", "id" => 999_999 }
+          missing_user: { User => 999_999 }
         }
       )
 
@@ -75,7 +75,7 @@ RSpec.describe FixtureKit::Repository do
       user = User.create!(name: "Original User", email: "updated-before-access@example.com")
       repository = described_class.new(
         {
-          "user" => { "model" => "User", "id" => user.id }
+          user: { User => user.id }
         }
       )
 
@@ -88,7 +88,7 @@ RSpec.describe FixtureKit::Repository do
       user = User.create!(name: "Soon Missing", email: "soon-missing@example.com")
       repository = described_class.new(
         {
-          "user" => { "model" => "User", "id" => user.id }
+          user: { User => user.id }
         }
       )
 

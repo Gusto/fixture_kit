@@ -40,7 +40,7 @@ RSpec.describe FixtureKit::Fixture do
       expect(cache).to receive(:save).ordered
       expect(on_cache_saved).to receive(:call).with(cache_identifier, be_within(0.001).of(0.4)).ordered
 
-      fixture.cache
+      fixture.generate
     end
 
     it "does not call save callbacks when cache already exists and force is false" do
@@ -51,7 +51,7 @@ RSpec.describe FixtureKit::Fixture do
       configuration.on_cache_saved { |identifier, duration| on_cache_saved.call(identifier, duration) }
       allow(cache).to receive(:exists?).and_return(true)
 
-      fixture.cache
+      fixture.generate
 
       expect(cache).not_to have_received(:save)
       expect(on_cache_save).not_to have_received(:call)
@@ -74,8 +74,22 @@ RSpec.describe FixtureKit::Fixture do
       expect(cache).to receive(:save).ordered
       expect(on_cache_saved).to receive(:call).with(cache_identifier, be_within(0.001).of(0.25)).ordered
 
-      fixture.cache(force: true)
+      fixture.generate(force: true)
     end
+
+    it "caches parent fixture before child fixture" do
+      parent_fixture = instance_double(FixtureKit::Fixture, generate: nil)
+      allow(cache).to receive(:exists?).and_return(false)
+      inherited_definition = FixtureKit::Definition.new(extends: "teams/basic") {}
+      allow(runner.registry).to receive(:add).with("teams/basic").and_return(parent_fixture)
+      inherited_fixture = described_class.new(fixture_identifier, inherited_definition)
+
+      expect(parent_fixture).to receive(:generate).with(no_args).ordered
+      expect(cache).to receive(:save).ordered
+
+      inherited_fixture.generate
+    end
+
   end
 
   describe "#mount" do
@@ -111,6 +125,19 @@ RSpec.describe FixtureKit::Fixture do
 
       expect(on_cache_mount).not_to have_received(:call)
       expect(on_cache_mounted).not_to have_received(:call)
+    end
+  end
+
+  describe "#parent" do
+    it "loads and memoizes parent fixture from registry" do
+      parent_fixture = instance_double(FixtureKit::Fixture)
+      definition = FixtureKit::Definition.new(extends: "teams/basic") {}
+      allow(runner.registry).to receive(:add).with("teams/basic").and_return(parent_fixture)
+      fixture = described_class.new(fixture_identifier, definition)
+
+      expect(fixture.parent).to equal(parent_fixture)
+      expect(fixture.parent).to equal(parent_fixture)
+      expect(runner.registry).to have_received(:add).with("teams/basic").once
     end
   end
 end

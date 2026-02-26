@@ -5,7 +5,7 @@ require "active_support/inflector"
 module FixtureKit
   class Repository
     def initialize(exposed_records)
-      @records = exposed_records.transform_keys(&:to_sym)
+      @records = exposed_records
       @loaded_records = {}
       define_readers
     end
@@ -33,8 +33,7 @@ module FixtureKit
     end
 
     def load_record(record_info)
-      model = ActiveSupport::Inflector.constantize(record_info.fetch("model"))
-      model.find_by(id: record_info.fetch("id"))
+      record_info.keys.first.find_by(id: record_info.values.first)
     end
   end
 end
