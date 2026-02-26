@@ -128,6 +128,42 @@ RSpec.describe FixtureKit::Fixture do
     end
   end
 
+  describe "#finish" do
+    it "clears memory for anonymous fixtures" do
+      anonymous_definition = FixtureKit::Definition.new {}
+      anonymous_scope = Class.new
+      allow(cache).to receive(:clear_memory)
+      fixture = described_class.new(anonymous_scope, anonymous_definition)
+
+      fixture.finish
+
+      expect(cache).to have_received(:clear_memory)
+    end
+
+    it "does not clear memory for named fixtures" do
+      allow(cache).to receive(:clear_memory)
+      fixture = described_class.new("project_management", definition)
+
+      fixture.finish
+
+      expect(cache).not_to have_received(:clear_memory)
+    end
+
+    it "allows a finished anonymous fixture to still be mounted from file cache" do
+      allow(cache).to receive(:clear_memory)
+      allow(cache).to receive(:exists?).and_return(true)
+      anonymous_definition = FixtureKit::Definition.new {}
+      anonymous_scope = Class.new
+      fixture = described_class.new(anonymous_scope, anonymous_definition)
+
+      fixture.finish
+      result = fixture.mount
+
+      expect(cache).to have_received(:clear_memory)
+      expect(result).to eq(:repository)
+    end
+  end
+
   describe "#parent" do
     it "loads and memoizes parent fixture from registry" do
       parent_fixture = instance_double(FixtureKit::Fixture)

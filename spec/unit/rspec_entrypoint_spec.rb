@@ -80,6 +80,17 @@ RSpec.describe FixtureKit::RSpec::ClassMethods do
     end
   end
 
+  describe "after(:context) hook" do
+    it "attaches an after context hook that calls finish on the declaration" do
+      group = build_group
+      group.fixture("project_management")
+
+      expect(fixture_declaration).to receive(:finish)
+
+      run_after_context_hook(group)
+    end
+  end
+
   def build_group(parent_metadata = {})
     Class.new do
       extend FixtureKit::RSpec::ClassMethods
@@ -97,10 +108,24 @@ RSpec.describe FixtureKit::RSpec::ClassMethods do
       define_singleton_method(:fixture_kit_before_context_hook) do
         @fixture_kit_before_context_hook
       end
+
+      define_singleton_method(:append_after) do |scope, &block|
+        raise "Unexpected scope: #{scope}" unless scope == :context
+
+        @fixture_kit_after_context_hook = block
+      end
+
+      define_singleton_method(:fixture_kit_after_context_hook) do
+        @fixture_kit_after_context_hook
+      end
     end
   end
 
   def run_before_context_hook(group)
     group.new.instance_exec(&group.fixture_kit_before_context_hook)
+  end
+
+  def run_after_context_hook(group)
+    group.new.instance_exec(&group.fixture_kit_after_context_hook)
   end
 end

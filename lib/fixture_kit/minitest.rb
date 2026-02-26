@@ -23,6 +23,8 @@ module FixtureKit
         end
 
         super
+
+        declaration&.finish
       end
     end
 

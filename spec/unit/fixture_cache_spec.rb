@@ -141,8 +141,9 @@ RSpec.describe FixtureKit::Cache do
 
       fixture_cache.save
 
-      expect(File.exist?(fixture_cache.path)).to be(true)
-      data = JSON.parse(File.read(fixture_cache.path))
+      path = fixture_cache.path
+      expect(File.exist?(path)).to be(true)
+      data = JSON.parse(File.read(path))
       expect(data["records"]).to have_key("User")
       expect(data["exposed"]).to have_key("alice")
     end
@@ -226,7 +227,7 @@ RSpec.describe FixtureKit::Cache do
     end
 
     it "includes parent fixture model records when saving inherited fixtures" do
-      parent_cache_data = FixtureKit::Cache::MemoryData.new(
+      parent_cache_data = FixtureKit::MemoryCache.new(
         records: { User => nil },
         exposed: {}
       )
@@ -257,6 +258,61 @@ RSpec.describe FixtureKit::Cache do
     end
   end
 
+  describe "#clear_memory" do
+    it "nils out @data" do
+      cache.instance_variable_set(:@data, FixtureKit::MemoryCache.new(records: {}, exposed: {}))
+
+      cache.clear_memory
+
+      expect(cache.data).to be_nil
+    end
+
+    it "still reports exists? as true when file cache is present" do
+      fixture_definition = FixtureKit::Definition.new do
+        alice = User.create!(name: "Alice", email: "alice-clear@example.com")
+        expose(alice: alice)
+      end
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+
+      fixture_cache.clear_memory
+
+      expect(fixture_cache.data).to be_nil
+      expect(fixture_cache.exists?).to be(true)
+    end
+
+    it "re-reads from file cache on next load" do
+      fixture_definition = FixtureKit::Definition.new do
+        alice = User.create!(name: "Alice", email: "alice-reread@example.com")
+        expose(alice: alice)
+      end
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+
+      fixture_cache.clear_memory
+      expect(fixture_cache.data).to be_nil
+
+      User.delete_all
+      repository = fixture_cache.load
+
+      expect(fixture_cache.data).not_to be_nil
+      expect(repository.alice).to be_a(User)
+      expect(repository.alice.name).to eq("Alice")
+    end
+  end
+
   describe "#load" do
     it "documents that connection execute_batch is currently private" do
       connection = User.connection
@@ -274,7 +330,7 @@ RSpec.describe FixtureKit::Cache do
       allow(FixtureKit::Repository).to receive(:new).with({}).and_return(:repository)
       cache.instance_variable_set(
         :@data,
-        FixtureKit::Cache::MemoryData.new(
+        FixtureKit::MemoryCache.new(
           records: {
             User => user_sql,
             Project => project_sql,
@@ -334,4 +390,5 @@ RSpec.describe FixtureKit::Cache do
     end
 
   end
+
 end
