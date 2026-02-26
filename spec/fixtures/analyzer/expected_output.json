@@ -1,0 +1,37 @@
+[
+  {
+    "file": "sample_spec.rb",
+    "total_examples": 8,
+    "max_reuse": 8,
+    "lets": [
+      {
+        "let_name": "employee",
+        "factories": ["employee"],
+        "example_count": 8,
+        "defined_at": "sample_spec.rb:8",
+        "group": "Orders"
+      },
+      {
+        "let_name": "company",
+        "factories": ["company"],
+        "example_count": 6,
+        "defined_at": "sample_spec.rb:7",
+        "group": "Orders"
+      },
+      {
+        "let_name": "admin",
+        "factories": ["admin_user"],
+        "example_count": 3,
+        "defined_at": "sample_spec.rb:16",
+        "group": "with admin"
+      },
+      {
+        "let_name": "company",
+        "factories": ["company"],
+        "example_count": 2,
+        "defined_at": "sample_spec.rb:27",
+        "group": "with override"
+      }
+    ]
+  }
+]
