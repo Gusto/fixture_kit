@@ -12,6 +12,26 @@ RSpec.configure do |config|
   config.include(FixtureKitIntegrationTimeHelpers)
 end
 
+# Shared examples auto-included via config.include_context to reproduce the
+# ordering issue: RSpec creates the shared group during configuration (before
+# the host group's `fixture` call sets metadata), so fixture declarations
+# must propagate through runtime metadata inheritance.
+RSpec.shared_examples "auto-included shared examples" do
+  context "inside auto-included shared context" do
+    let(:shared_user) { User.find_by!(email: "alice@team.test") }
+
+    it "can access fixture data through let blocks defined in the host group" do
+      expect(fixture.alice.email).to eq("alice@team.test")
+      expect(shared_user).to eq(fixture.alice)
+      puts "FKIT_ASSERT:SHARED_EXAMPLE_FIXTURE_ACCESS"
+    end
+  end
+end
+
+RSpec.configure do |config|
+  config.include_context "auto-included shared examples", :include_shared_fixture_test
+end
+
 RSpec.describe "FixtureKit integration" do
   describe "fixture preload timing" do
     fixture "teams/basic"
@@ -217,6 +237,15 @@ RSpec.describe "FixtureKit integration" do
       end.to raise_error(FixtureKit::MultipleFixtures, "cannot load multiple fixtures in the same context")
 
       puts "FKIT_ASSERT:ANONYMOUS_DUPLICATE_DECLARATION"
+    end
+  end
+
+  describe "fixture with auto-included shared examples", :include_shared_fixture_test do
+    fixture "teams/basic"
+
+    it "works in the host group" do
+      expect(fixture.alice.name).to eq("Alice")
+      puts "FKIT_ASSERT:SHARED_EXAMPLE_HOST_FIXTURE"
     end
   end
 

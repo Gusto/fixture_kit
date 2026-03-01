@@ -30,7 +30,11 @@ module FixtureKit
       def fixture(name = nil, extends: nil, &block)
         definition = Definition.new(extends: extends, &block) if block_given?
         declaration = ::RSpec.configuration.fixture_kit.register(name || definition, self)
-        metadata[DECLARATION_METADATA_KEY] = declaration
+        # Use update_inherited_metadata to set the declaration on this group
+        # AND propagate to any child groups already created (e.g., shared
+        # example groups auto-included via `config.include_context` during
+        # RSpec configuration).
+        update_inherited_metadata(DECLARATION_METADATA_KEY => declaration)
 
         prepend_before(:context) do
           self.class.metadata[DECLARATION_METADATA_KEY].generate
