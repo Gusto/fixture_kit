@@ -76,6 +76,13 @@ RSpec.describe "Dummy app integration" do
       "FKIT_ASSERT:UNDECLARED_FIXTURE_READER"
     ]
 
+    if INTEGRATION_FRAMEWORK == "rspec"
+      expected_markers += [
+        "FKIT_ASSERT:SHARED_EXAMPLE_FIXTURE_ACCESS",
+        "FKIT_ASSERT:SHARED_EXAMPLE_HOST_FIXTURE"
+      ]
+    end
+
     expected_markers.each do |marker|
       expect(output).to include(marker), "Expected marker #{marker.inspect} in output.\nOutput:\n#{output}"
     end

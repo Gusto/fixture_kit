@@ -109,6 +109,10 @@ RSpec.describe FixtureKit::RSpec::ClassMethods do
         @fixture_kit_before_context_hook
       end
 
+      define_singleton_method(:update_inherited_metadata) do |updates|
+        metadata.update(updates)
+      end
+
       define_singleton_method(:append_after) do |scope, &block|
         raise "Unexpected scope: #{scope}" unless scope == :context
 
