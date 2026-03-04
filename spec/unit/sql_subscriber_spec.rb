@@ -65,6 +65,15 @@ RSpec.describe FixtureKit::SqlSubscriber do
 
       expect(models).to contain_exactly(Vehicle)
     end
+
+    it "resolves STI subclasses whose base model inherits directly from ActiveRecord::Base" do
+      models = described_class.capture do
+        Phone.create!(name: "iPhone")
+        Tablet.create!(name: "iPad")
+      end
+
+      expect(models).to contain_exactly(Gadget)
+    end
   end
 
   describe "sql.active_record payload name format assumptions" do
