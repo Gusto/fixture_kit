@@ -24,7 +24,7 @@ module FixtureKit
     end
 
     def self.base_table_model(model)
-      model = model.superclass until model.superclass.abstract_class?
+      model = model.superclass until model.superclass == ActiveRecord::Base || model.superclass.abstract_class?
       model
     end
     private_class_method :base_table_model
