@@ -249,6 +249,20 @@ RSpec.describe "FixtureKit integration" do
     end
   end
 
+  describe "unscoped record lookup" do
+    fixture "soft_deleted_project"
+
+    it "finds exposed records even when hidden by default_scope" do
+      expect(Project.count).to eq(1)
+      expect(Project.unscoped.count).to eq(2)
+
+      expect(fixture.archived_project.name).to eq("Archived Project")
+      expect(fixture.archived_project.deleted_at).to be_present
+      expect(fixture.active_project.name).to eq("Active Project")
+      puts "FKIT_ASSERT:UNSCOPED_RECORD_LOOKUP"
+    end
+  end
+
   describe "fixture instance reader without declaration" do
     it "raises a helpful error message" do
       expect do

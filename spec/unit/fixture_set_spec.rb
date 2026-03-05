@@ -12,7 +12,9 @@ RSpec.describe FixtureKit::Repository do
         }
       )
 
-      expect(User).to receive(:find_by).with(id: user.id).once.and_call_original
+      unscoped_relation = User.unscoped
+      expect(User).to receive(:unscoped).once.and_return(unscoped_relation)
+      expect(unscoped_relation).to receive(:find_by).with(id: user.id).once.and_call_original
 
       first = repository.admin
       second = repository.admin
@@ -34,8 +36,10 @@ RSpec.describe FixtureKit::Repository do
         }
       )
 
-      expect(User).to receive(:find_by).with(id: user_one.id).once.and_call_original
-      expect(User).to receive(:find_by).with(id: user_two.id).once.and_call_original
+      unscoped_relation = User.unscoped
+      allow(User).to receive(:unscoped).and_return(unscoped_relation)
+      expect(unscoped_relation).to receive(:find_by).with(id: user_one.id).once.and_call_original
+      expect(unscoped_relation).to receive(:find_by).with(id: user_two.id).once.and_call_original
 
       first = repository.users
       second = repository.users
@@ -55,8 +59,10 @@ RSpec.describe FixtureKit::Repository do
         }
       )
 
-      expect(User).to receive(:find_by).with(id: user.id).once.and_call_original
-      expect(User).not_to receive(:find_by).with(id: other_user.id)
+      unscoped_relation = User.unscoped
+      allow(User).to receive(:unscoped).and_return(unscoped_relation)
+      expect(unscoped_relation).to receive(:find_by).with(id: user.id).once.and_call_original
+      expect(unscoped_relation).not_to receive(:find_by).with(id: other_user.id)
 
       expect(repository.user.id).to eq(user.id)
     end

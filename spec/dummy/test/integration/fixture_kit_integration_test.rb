@@ -200,6 +200,20 @@ class FixtureKitAnonymousDuplicateDeclarationIntegrationTest < ActiveSupport::Te
   end
 end
 
+class FixtureKitUnscopedRecordLookupIntegrationTest < ActiveSupport::TestCase
+  fixture "soft_deleted_project"
+
+  test "finds exposed records even when hidden by default_scope" do
+    assert_equal 1, Project.count
+    assert_equal 2, Project.unscoped.count
+
+    assert_equal "Archived Project", fixture.archived_project.name
+    assert_not_nil fixture.archived_project.deleted_at
+    assert_equal "Active Project", fixture.active_project.name
+    puts "FKIT_ASSERT:UNSCOPED_RECORD_LOOKUP"
+  end
+end
+
 class FixtureKitUndeclaredFixtureReaderIntegrationTest < ActiveSupport::TestCase
   test "raises a helpful error message when fixture is called without declaration" do
     error = assert_raises(RuntimeError) { fixture }
