@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2024_01_01_000002) do
+ActiveRecord::Schema[8.1].define(version: 2024_01_01_000003) do
   create_table "activity_logs", force: :cascade do |t|
     t.string "action", null: false
     t.datetime "created_at", null: false
@@ -34,6 +34,7 @@ ActiveRecord::Schema[8.1].define(version: 2024_01_01_000002) do
 
   create_table "projects", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.datetime "deleted_at"
     t.text "description"
     t.string "name", null: false
     t.integer "owner_id", null: false

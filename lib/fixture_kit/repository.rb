@@ -33,7 +33,7 @@ module FixtureKit
     end
 
     def load_record(record_info)
-      record_info.keys.first.find_by(id: record_info.values.first)
+      record_info.keys.first.unscoped.find_by(id: record_info.values.first)
     end
   end
 end
