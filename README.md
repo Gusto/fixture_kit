@@ -83,6 +83,48 @@ end
 
 `fixture` returns a `Repository`, and exposed names become reader methods.
 
+### 4. Extend existing fixtures
+
+Use `extends` to build on top of an existing named fixture. The parent fixture's data is created first, and you can reference its exposed records via `parent`:
+
+```ruby
+# spec/fixture_kit/project_with_tasks.rb
+FixtureKit.define(extends: "project_management") do
+  task = Task.create!(
+    title: "Ship v2",
+    project: parent.project,
+    assignee: parent.owner
+  )
+
+  expose(task: task)
+end
+```
+
+```ruby
+RSpec.describe Task do
+  fixture "project_with_tasks"
+
+  it "belongs to the parent project" do
+    expect(fixture.task.project).to eq(Project.find_by(name: "Roadmap"))
+  end
+end
+```
+
+Parent records are **not** auto-exposed — only names you explicitly `expose` in the child are available on `fixture`. You can also extend inline:
+
+```ruby
+RSpec.describe Task do
+  fixture(extends: "project_management") do
+    task = Task.create!(title: "Ship v2", project: parent.project, assignee: parent.owner)
+    expose(task: task)
+  end
+
+  it "creates a task under the inherited project" do
+    expect(fixture.task.project.name).to eq("Roadmap")
+  end
+end
+```
+
 ## Requirements
 
 - Ruby >= 3.3
