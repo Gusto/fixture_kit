@@ -45,13 +45,14 @@ Effects:
 Declaration signature in both frameworks:
 
 ```ruby
-fixture(name = nil, &definition_block)
+fixture(name = nil, extends: nil, &definition_block)
 ```
 
 Rules:
 - Provide exactly one of `name` or block.
 - Both provided: raises `FixtureKit::InvalidFixtureDeclaration`.
 - Neither provided: raises `FixtureKit::InvalidFixtureDeclaration`.
+- `extends` can be combined with a block for inline inheritance (see [Fixture Inheritance](#fixture-inheritance-extends)).
 - More than one declaration in same context/class: raises `FixtureKit::MultipleFixtures`.
 - Nested context/class can declare its own fixture and override parent declaration.
 
@@ -76,6 +77,72 @@ end
 `Definition#expose(**records)`:
 - Exposed names become repository methods.
 - Duplicate exposed names raise `FixtureKit::DuplicateNameError`.
+
+## Fixture Inheritance (`extends`)
+
+```ruby
+FixtureKit.define(extends: "base_fixture_name") do
+  # parent records are available via `parent`
+  record = SomeModel.create!(related: parent.exposed_name)
+  expose(record: record)
+end
+```
+
+`extends` accepts a named fixture string. The parent fixture is generated and mounted before the child definition runs.
+
+### `parent`
+
+Inside the definition block, `parent` returns the parent fixture's `Repository`. Use it to reference the parent's exposed records:
+
+```ruby
+FixtureKit.define(extends: "project_management") do
+  task = Task.create!(project: parent.project, assignee: parent.owner)
+  expose(task: task)
+end
+```
+
+### Chained inheritance
+
+Inheritance can be chained — a child can extend a fixture that itself extends another:
+
+```ruby
+# base.rb
+FixtureKit.define do
+  owner = User.create!(name: "Owner", email: "owner@example.com")
+  expose(owner: owner)
+end
+
+# child.rb
+FixtureKit.define(extends: "base") do
+  project = Project.create!(name: "Project", owner: parent.owner)
+  expose(project: project)
+end
+
+# grandchild.rb
+FixtureKit.define(extends: "child") do
+  task = Task.create!(title: "Task", project: parent.project, assignee: parent.project.owner)
+  expose(task: task)
+end
+```
+
+### Inline inheritance
+
+`extends` works with both named and anonymous (inline) fixtures:
+
+```ruby
+fixture(extends: "project_management") do
+  task = Task.create!(title: "Inline Task", project: parent.project, assignee: parent.owner)
+  expose(task: task)
+end
+```
+
+### Exposed record behavior
+
+Parent records are **not** auto-exposed in the child. Only names explicitly passed to `expose` in the child definition are available on the test `fixture` reader. The parent's database records are still inserted — they just aren't accessible by name unless re-exposed.
+
+### Circular inheritance
+
+Circular `extends` chains are detected at registration time and raise `FixtureKit::CircularFixtureInheritance`.
 
 ## Configuration
 
@@ -195,6 +262,7 @@ Public error classes:
 - `FixtureKit::CacheMissingError`
 - `FixtureKit::FixtureDefinitionNotFound`
 - `FixtureKit::RunnerAlreadyStartedError`
+- `FixtureKit::CircularFixtureInheritance`
 
 ## Requirements
 
