@@ -22,13 +22,7 @@ module FixtureKit
         ActiveSupport::Inflector.constantize(model_name)
       end
 
-      exposed = file_data.fetch("exposed").each_with_object({}) do |(name, value), hash|
-        if value.is_a?(Array)
-          hash[name.to_sym] = value.map { |r| { ActiveSupport::Inflector.constantize(r.keys.first) => r.values.first } }
-        else
-          hash[name.to_sym] = { ActiveSupport::Inflector.constantize(value.keys.first) => value.values.first }
-        end
-      end
+      exposed = file_data.fetch("exposed").transform_keys(&:to_sym)
 
       MemoryCache.new(records: records, exposed: exposed)
     end
@@ -39,13 +33,28 @@ module FixtureKit
     end
 
     def serialize_exposed(exposed)
-      exposed.each_with_object({}) do |(name, record), hash|
-        if record.is_a?(Array)
-          hash[name] = record.map { |record| { record.class => record.id } }
-        else
-          hash[name] = { record.class => record.id }
-        end
+      exposed.each_with_object({}) do |(name, value), hash|
+        hash[name] = serialize_value(value)
       end
     end
+
+    private
+
+    def active_record?(value)
+      defined?(ActiveRecord::Base) && value.is_a?(ActiveRecord::Base)
+    end
+
+    def serialize_value(value)
+      if active_record?(value)
+        { "_model" => value.class.name, "_id" => value.id }
+      elsif value.is_a?(Hash)
+        value.transform_values { |v| serialize_value(v) }
+      elsif value.is_a?(Array)
+        value.map { |v| serialize_value(v) }
+      else
+        value
+      end
+    end
+
   end
 end

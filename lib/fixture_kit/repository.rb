@@ -25,15 +25,23 @@ module FixtureKit
     end
 
     def materialize(value)
-      if value.is_a?(Array)
-        value.map { |record_info| load_record(record_info) }.freeze
+      resolve(value)
+    end
+
+    def resolve(value)
+      if value.is_a?(Hash) && value.key?("_model")
+        load_record(ActiveSupport::Inflector.constantize(value["_model"]), value["_id"])
+      elsif value.is_a?(Hash)
+        value.transform_values { |v| resolve(v) }.freeze
+      elsif value.is_a?(Array)
+        value.map { |v| resolve(v) }.freeze
       else
-        load_record(value)
+        value
       end
     end
 
-    def load_record(record_info)
-      record_info.keys.first.unscoped.find_by(id: record_info.values.first)
+    def load_record(model, id)
+      model.unscoped.find_by(id: id)
     end
   end
 end

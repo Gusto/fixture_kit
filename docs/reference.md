@@ -77,6 +77,8 @@ end
 `Definition#expose(**records)`:
 - Exposed names become repository methods.
 - Duplicate exposed names raise `FixtureKit::DuplicateNameError`.
+- Values must be ActiveRecord instances, `String`, `Integer`, `Float`, `TrueClass`, `FalseClass`, `NilClass`, `Hash`, or `Array`.
+- Unsupported types raise `FixtureKit::UnsupportedExposedType`.
 
 ## Fixture Inheritance (`extends`)
 
@@ -242,9 +244,10 @@ Examples:
 
 `Repository`
 - Methods are generated from exposed names.
-- First access loads model with `find_by(id: ...)`.
-- Loaded value is memoized for subsequent access in that test.
-- If row is missing before first access, value is `nil`.
+- ActiveRecord values are loaded with `find_by(id: ...)` on first access.
+- Primitive values are returned directly without a database query.
+- Loaded values are memoized for subsequent access in that test.
+- If an ActiveRecord row is missing before first access, value is `nil`.
 
 ## Environment Variables
 
@@ -263,6 +266,7 @@ Public error classes:
 - `FixtureKit::FixtureDefinitionNotFound`
 - `FixtureKit::RunnerAlreadyStartedError`
 - `FixtureKit::CircularFixtureInheritance`
+- `FixtureKit::UnsupportedExposedType`
 
 ## Requirements
 

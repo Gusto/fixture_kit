@@ -35,10 +35,10 @@ RSpec.describe FixtureKit::FileCache do
   end
 
   describe "#write and #read" do
-    it "round-trips MemoryCache through JSON on disk" do
+    it "round-trips MemoryCache with AR records through JSON on disk" do
       data = FixtureKit::MemoryCache.new(
         records: { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" },
-        exposed: { alice: { User => 1 } }
+        exposed: { alice: { "_model" => "User", "_id" => 1 } }
       )
 
       file_cache.write(data)
@@ -47,7 +47,7 @@ RSpec.describe FixtureKit::FileCache do
       result = file_cache.read
       expect(result).to be_a(FixtureKit::MemoryCache)
       expect(result.records).to eq({ User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" })
-      expect(result.exposed).to eq({ alice: { User => 1 } })
+      expect(result.exposed).to eq({ alice: { "_model" => "User", "_id" => 1 } })
     end
 
     it "round-trips MemoryCache with nil sql values" do
@@ -62,16 +62,27 @@ RSpec.describe FixtureKit::FileCache do
       expect(result.records).to eq({ User => nil })
     end
 
-    it "round-trips MemoryCache with array exposed values" do
+    it "round-trips mixed AR, primitive, and nested exposed values" do
       data = FixtureKit::MemoryCache.new(
-        records: {},
-        exposed: { users: [{ User => 1 }, { User => 2 }] }
+        records: { User => "INSERT INTO users ..." },
+        exposed: {
+          alice: { "_model" => "User", "_id" => 1 },
+          users: [{ "_model" => "User", "_id" => 1 }, { "_model" => "User", "_id" => 2 }],
+          label: "admin",
+          count: 42,
+          active: true,
+          deleted: false,
+          nothing: nil,
+          metadata: { "role" => "admin" },
+          tags: [1, 2, 3],
+          nested: { "user" => { "_model" => "User", "_id" => 1 }, "label" => "test" }
+        }
       )
 
       file_cache.write(data)
       result = file_cache.read
 
-      expect(result.exposed).to eq({ users: [{ User => 1 }, { User => 2 }] })
+      expect(result.exposed).to eq(data.exposed.transform_keys(&:to_s).transform_keys(&:to_sym))
     end
 
     it "creates intermediate directories" do
@@ -86,21 +97,53 @@ RSpec.describe FixtureKit::FileCache do
   end
 
   describe "#serialize_exposed" do
-    it "converts ActiveRecord instances to class/id pairs" do
+    it "converts ActiveRecord instances to _model/_id pairs" do
       user = User.create!(name: "Alice", email: "alice-file-cache@example.com")
 
       result = file_cache.serialize_exposed({ alice: user })
 
-      expect(result).to eq({ alice: { User => user.id } })
+      expect(result).to eq({ alice: { "_model" => "User", "_id" => user.id } })
     end
 
-    it "converts arrays of ActiveRecord instances" do
-      alice = User.create!(name: "Alice", email: "alice-array@example.com")
-      bob = User.create!(name: "Bob", email: "bob-array@example.com")
+    it "passes through primitives as-is" do
+      result = file_cache.serialize_exposed({
+        label: "admin",
+        count: 42,
+        active: true,
+        deleted: false,
+        nothing: nil,
+        metadata: { "role" => "admin" },
+        tags: ["ruby", "rails"]
+      })
 
-      result = file_cache.serialize_exposed({ users: [alice, bob] })
+      expect(result).to eq({
+        label: "admin",
+        count: 42,
+        active: true,
+        deleted: false,
+        nothing: nil,
+        metadata: { "role" => "admin" },
+        tags: ["ruby", "rails"]
+      })
+    end
 
-      expect(result).to eq({ users: [{ User => alice.id }, { User => bob.id }] })
+    it "recursively converts ActiveRecord instances in nested structures" do
+      user = User.create!(name: "Alice", email: "alice-nested@example.com")
+      model_hash = { "_model" => "User", "_id" => user.id }
+
+      result = file_cache.serialize_exposed({
+        users: [user, user],
+        data: { "user" => user, "label" => "admin" },
+        deep: { "nested" => { "user" => user } },
+        mixed: ["tag", user]
+      })
+
+      expect(result).to eq({
+        users: [model_hash, model_hash],
+        data: { "user" => model_hash, "label" => "admin" },
+        deep: { "nested" => { "user" => model_hash } },
+        mixed: ["tag", model_hash]
+      })
     end
   end
 end

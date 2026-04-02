@@ -61,5 +61,39 @@ RSpec.describe FixtureKit::Definition do
         definition.evaluate(Object.new)
       end.to raise_error(FixtureKit::DuplicateNameError, "Name alice already exposed")
     end
+
+    it "accepts all JSON-compatible primitive types" do
+      definition = described_class.new do
+        expose(
+          str: "hello",
+          int: 42,
+          yes: true,
+          no: false,
+          nothing: nil,
+          hsh: { "key" => "value" },
+          arr: [1, 2, 3]
+        )
+      end
+
+      expect { definition.evaluate(Object.new) }.not_to raise_error
+    end
+
+    it "raises UnsupportedExposedType for unsupported types" do
+      [
+        [:active, :status, /Unsupported type Symbol for exposed name :status/],
+        [Object.new, :thing, /Unsupported type Object for exposed name :thing/],
+        [{ role: "admin" }, :metadata, /Unsupported hash key type Symbol in exposed name :metadata/],
+        [{ "status" => :active }, :data, /Unsupported type Symbol for exposed name :data/],
+        [["valid", :invalid], :items, /Unsupported type Symbol for exposed name :items/]
+      ].each do |value, name, pattern|
+        definition = described_class.new do
+          expose(**{ name => value })
+        end
+
+        expect do
+          definition.evaluate(Object.new)
+        end.to raise_error(FixtureKit::UnsupportedExposedType, pattern)
+      end
+    end
   end
 end
