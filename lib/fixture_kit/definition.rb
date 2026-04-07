@@ -11,7 +11,7 @@ module FixtureKit
     end
 
     def path
-      @definition.source_location&.first
+      @definition.source_location.first
     end
 
     def evaluate(context, parent: nil)
