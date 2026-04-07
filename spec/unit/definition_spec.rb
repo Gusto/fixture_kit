@@ -50,6 +50,14 @@ RSpec.describe FixtureKit::Definition do
     end
   end
 
+  describe "#source_location" do
+    it "returns the file path where the definition block was defined" do
+      definition = described_class.new {}
+
+      expect(definition.source_location).to eq(__FILE__)
+    end
+  end
+
   describe "#expose" do
     it "raises when the same name is exposed twice" do
       definition = described_class.new do

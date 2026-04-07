@@ -46,15 +46,15 @@ RSpec.describe FixtureKit::Configuration do
       configuration = described_class.new
       callback_one = spy("callback_one")
       callback_two = spy("callback_two")
-      cache = double("cache")
+      event = double("event")
 
-      configuration.on_cache_save { |c| callback_one.call(c) }
-      configuration.on_cache_save { |c| callback_two.call(c) }
+      configuration.on_cache_save { |e| callback_one.call(e) }
+      configuration.on_cache_save { |e| callback_two.call(e) }
 
-      expect(callback_one).to receive(:call).with(cache).ordered
-      expect(callback_two).to receive(:call).with(cache).ordered
+      expect(callback_one).to receive(:call).with(event).ordered
+      expect(callback_two).to receive(:call).with(event).ordered
 
-      configuration.callbacks.run(:cache_save, cache)
+      configuration.callbacks.run(:cache_save, event)
     end
   end
 
@@ -63,19 +63,19 @@ RSpec.describe FixtureKit::Configuration do
       expect(described_class.new.on_cache_saved).to eq([])
     end
 
-    it "registers and runs callbacks in order with cache and duration" do
+    it "registers and runs callbacks in order with event and duration" do
       configuration = described_class.new
       callback_one = spy("callback_one")
       callback_two = spy("callback_two")
-      cache = double("cache")
+      event = double("event")
 
-      configuration.on_cache_saved { |c, duration| callback_one.call(c, duration) }
-      configuration.on_cache_saved { |c, duration| callback_two.call(c, duration) }
+      configuration.on_cache_saved { |e, duration| callback_one.call(e, duration) }
+      configuration.on_cache_saved { |e, duration| callback_two.call(e, duration) }
 
-      expect(callback_one).to receive(:call).with(cache, 0.25).ordered
-      expect(callback_two).to receive(:call).with(cache, 0.25).ordered
+      expect(callback_one).to receive(:call).with(event, 0.25).ordered
+      expect(callback_two).to receive(:call).with(event, 0.25).ordered
 
-      configuration.callbacks.run(:cache_saved, cache, 0.25)
+      configuration.callbacks.run(:cache_saved, event, 0.25)
     end
   end
 
@@ -88,15 +88,15 @@ RSpec.describe FixtureKit::Configuration do
       configuration = described_class.new
       callback_one = spy("callback_one")
       callback_two = spy("callback_two")
-      cache = double("cache")
+      event = double("event")
 
-      configuration.on_cache_mount { |c| callback_one.call(c) }
-      configuration.on_cache_mount { |c| callback_two.call(c) }
+      configuration.on_cache_mount { |e| callback_one.call(e) }
+      configuration.on_cache_mount { |e| callback_two.call(e) }
 
-      expect(callback_one).to receive(:call).with(cache).ordered
-      expect(callback_two).to receive(:call).with(cache).ordered
+      expect(callback_one).to receive(:call).with(event).ordered
+      expect(callback_two).to receive(:call).with(event).ordered
 
-      configuration.callbacks.run(:cache_mount, cache)
+      configuration.callbacks.run(:cache_mount, event)
     end
   end
 
@@ -105,19 +105,19 @@ RSpec.describe FixtureKit::Configuration do
       expect(described_class.new.on_cache_mounted).to eq([])
     end
 
-    it "registers and runs callbacks in order with cache and duration" do
+    it "registers and runs callbacks in order with event and duration" do
       configuration = described_class.new
       callback_one = spy("callback_one")
       callback_two = spy("callback_two")
-      cache = double("cache")
+      event = double("event")
 
-      configuration.on_cache_mounted { |c, duration| callback_one.call(c, duration) }
-      configuration.on_cache_mounted { |c, duration| callback_two.call(c, duration) }
+      configuration.on_cache_mounted { |e, duration| callback_one.call(e, duration) }
+      configuration.on_cache_mounted { |e, duration| callback_two.call(e, duration) }
 
-      expect(callback_one).to receive(:call).with(cache, 0.15).ordered
-      expect(callback_two).to receive(:call).with(cache, 0.15).ordered
+      expect(callback_one).to receive(:call).with(event, 0.15).ordered
+      expect(callback_two).to receive(:call).with(event, 0.15).ordered
 
-      configuration.callbacks.run(:cache_mounted, cache, 0.15)
+      configuration.callbacks.run(:cache_mounted, event, 0.15)
     end
   end
 end

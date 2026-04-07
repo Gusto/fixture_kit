@@ -29,19 +29,19 @@ RSpec.describe FixtureKit::Callbacks do
       callbacks = described_class.new
       callback_one = spy("callback_one")
       callback_two = spy("callback_two")
-      cache = double("cache")
-      callbacks.register(:cache_saved) { |c, duration| callback_one.call(c, duration) }
-      callbacks.register(:cache_saved) { |c, duration| callback_two.call(c, duration) }
+      event = double("event")
+      callbacks.register(:cache_saved) { |e, duration| callback_one.call(e, duration) }
+      callbacks.register(:cache_saved) { |e, duration| callback_two.call(e, duration) }
 
-      expect(callback_one).to receive(:call).with(cache, 0.2).ordered
-      expect(callback_two).to receive(:call).with(cache, 0.2).ordered
+      expect(callback_one).to receive(:call).with(event, 0.2).ordered
+      expect(callback_two).to receive(:call).with(event, 0.2).ordered
 
-      callbacks.run(:cache_saved, cache, 0.2)
+      callbacks.run(:cache_saved, event, 0.2)
     end
 
     it "does nothing when there are no callbacks for a known key" do
       expect do
-        described_class.new.run(:cache_mount, double("cache"))
+        described_class.new.run(:cache_mount, double("event"))
       end.not_to raise_error
     end
 
