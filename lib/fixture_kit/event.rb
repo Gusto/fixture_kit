@@ -13,7 +13,7 @@ module FixtureKit
     end
 
     def path
-      fixture.definition.source_location
+      fixture.definition.path
     end
   end
 end

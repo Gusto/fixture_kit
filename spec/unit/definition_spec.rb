@@ -50,11 +50,11 @@ RSpec.describe FixtureKit::Definition do
     end
   end
 
-  describe "#source_location" do
+  describe "#path" do
     it "returns the file path where the definition block was defined" do
       definition = described_class.new {}
 
-      expect(definition.source_location).to eq(__FILE__)
+      expect(definition.path).to eq(__FILE__)
     end
   end
 

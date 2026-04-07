@@ -51,7 +51,7 @@ RSpec.describe FixtureKit::Fixture do
       fixture.generate
 
       expect(received_event.identifier).to eq(cache_identifier)
-      expect(received_event.path).to eq(definition.source_location)
+      expect(received_event.path).to eq(definition.path)
     end
 
     it "does not call save callbacks when cache already exists and force is false" do

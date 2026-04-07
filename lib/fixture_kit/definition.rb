@@ -10,7 +10,7 @@ module FixtureKit
       @extends = extends
     end
 
-    def source_location
+    def path
       @definition.source_location&.first
     end
 
