@@ -199,24 +199,27 @@ Options are available via `attr_reader :options` in `FixtureKit::Adapter`.
 
 Register using configuration methods:
 
-`config.on_cache_save { |identifier| ... }`
+`config.on_cache_save { |cache| ... }`
 - Runs before cache save.
 
-`config.on_cache_saved { |identifier, duration| ... }`
+`config.on_cache_saved { |cache, duration| ... }`
 - Runs after cache save.
 - `duration` is elapsed seconds as `Float`.
 
-`config.on_cache_mount { |identifier| ... }`
+`config.on_cache_mount { |cache| ... }`
 - Runs before cache mount.
 
-`config.on_cache_mounted { |identifier, duration| ... }`
+`config.on_cache_mounted { |cache, duration| ... }`
 - Runs after cache mount.
 - `duration` is elapsed seconds as `Float`.
+
+The `cache` argument is a `FixtureKit::Cache` instance. Useful methods:
+- `cache.identifier` — String cache identifier (no `.json` suffix).
+- `cache.path` — full file path to the cache JSON file.
 
 Behavior:
 - Multiple callbacks per event supported.
 - Callbacks run in registration order.
-- `identifier` is always a String cache identifier (no `.json` suffix).
 
 ## Cache Identifiers and Paths
 
