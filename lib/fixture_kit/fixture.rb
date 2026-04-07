@@ -47,9 +47,8 @@ module FixtureKit
     end
 
     def emit(event)
-      cache_identifier = @cache.identifier
       unless block_given?
-        configuration.callbacks.run(event, cache_identifier)
+        configuration.callbacks.run(event, @cache)
         return
       end
 
@@ -57,7 +56,7 @@ module FixtureKit
       elapsed = Benchmark.realtime do
         value = yield
       end
-      configuration.callbacks.run(event, cache_identifier, elapsed)
+      configuration.callbacks.run(event, @cache, elapsed)
       value
     end
   end
