@@ -199,23 +199,23 @@ Options are available via `attr_reader :options` in `FixtureKit::Adapter`.
 
 Register using configuration methods:
 
-`config.on_cache_save { |event| ... }`
+`config.on_cache_save { |fixture| ... }`
 - Runs before cache save.
 
-`config.on_cache_saved { |event, duration| ... }`
+`config.on_cache_saved { |fixture, duration| ... }`
 - Runs after cache save.
 - `duration` is elapsed seconds as `Float`.
 
-`config.on_cache_mount { |event| ... }`
+`config.on_cache_mount { |fixture| ... }`
 - Runs before cache mount.
 
-`config.on_cache_mounted { |event, duration| ... }`
+`config.on_cache_mounted { |fixture, duration| ... }`
 - Runs after cache mount.
 - `duration` is elapsed seconds as `Float`.
 
-The `event` argument is a `FixtureKit::Event` instance. Methods:
-- `event.identifier` — String cache identifier (no `.json` suffix).
-- `event.path` — file path where the fixture definition block was defined.
+The `fixture` argument is a `FixtureKit::Event` instance. Methods:
+- `fixture.identifier` — String cache identifier (no `.json` suffix).
+- `fixture.path` — file path where the fixture definition block was defined.
 
 Behavior:
 - Multiple callbacks per event supported.
