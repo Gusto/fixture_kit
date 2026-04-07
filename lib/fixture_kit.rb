@@ -15,6 +15,7 @@ module FixtureKit
   autoload :Callbacks, File.expand_path("fixture_kit/callbacks", __dir__)
   autoload :ConfigurationHelper, File.expand_path("fixture_kit/configuration_helper", __dir__)
   autoload :Singleton, File.expand_path("fixture_kit/singleton", __dir__)
+  autoload :Event, File.expand_path("fixture_kit/event", __dir__)
   autoload :Fixture, File.expand_path("fixture_kit/fixture", __dir__)
   autoload :Definition, File.expand_path("fixture_kit/definition", __dir__)
   autoload :Registry, File.expand_path("fixture_kit/registry", __dir__)

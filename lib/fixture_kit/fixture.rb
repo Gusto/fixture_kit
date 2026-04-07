@@ -46,9 +46,10 @@ module FixtureKit
       !identifier.is_a?(String)
     end
 
-    def emit(event)
+    def emit(event_name)
+      fixture_event = Event.new(self)
       unless block_given?
-        configuration.callbacks.run(event, @cache)
+        configuration.callbacks.run(event_name, fixture_event)
         return
       end
 
@@ -56,7 +57,7 @@ module FixtureKit
       elapsed = Benchmark.realtime do
         value = yield
       end
-      configuration.callbacks.run(event, @cache, elapsed)
+      configuration.callbacks.run(event_name, fixture_event, elapsed)
       value
     end
   end

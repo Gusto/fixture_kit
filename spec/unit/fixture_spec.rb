@@ -29,26 +29,37 @@ RSpec.describe FixtureKit::Fixture do
       fixture = described_class.new(fixture_identifier, definition)
       on_cache_save = spy("on_cache_save")
       on_cache_saved = spy("on_cache_saved")
-      configuration.on_cache_save { |c| on_cache_save.call(c) }
-      configuration.on_cache_saved { |c, duration| on_cache_saved.call(c, duration) }
+      configuration.on_cache_save { |event| on_cache_save.call(event) }
+      configuration.on_cache_saved { |event, duration| on_cache_saved.call(event, duration) }
       allow(Benchmark).to receive(:realtime) do |&block|
         block.call
         0.4
       end
 
-      expect(on_cache_save).to receive(:call).with(cache).ordered
+      expect(on_cache_save).to receive(:call).with(an_instance_of(FixtureKit::Event)).ordered
       expect(cache).to receive(:save).ordered
-      expect(on_cache_saved).to receive(:call).with(cache, be_within(0.001).of(0.4)).ordered
+      expect(on_cache_saved).to receive(:call).with(an_instance_of(FixtureKit::Event), be_within(0.001).of(0.4)).ordered
 
       fixture.generate
+    end
+
+    it "provides identifier and path on the event" do
+      fixture = described_class.new(fixture_identifier, definition)
+      received_event = nil
+      configuration.on_cache_save { |event| received_event = event }
+
+      fixture.generate
+
+      expect(received_event.identifier).to eq(cache_identifier)
+      expect(received_event.path).to eq(definition.path)
     end
 
     it "does not call save callbacks when cache already exists and force is false" do
       fixture = described_class.new(fixture_identifier, definition)
       on_cache_save = spy("on_cache_save")
       on_cache_saved = spy("on_cache_saved")
-      configuration.on_cache_save { |c| on_cache_save.call(c) }
-      configuration.on_cache_saved { |c, duration| on_cache_saved.call(c, duration) }
+      configuration.on_cache_save { |event| on_cache_save.call(event) }
+      configuration.on_cache_saved { |event, duration| on_cache_saved.call(event, duration) }
       allow(cache).to receive(:exists?).and_return(true)
 
       fixture.generate
@@ -62,17 +73,17 @@ RSpec.describe FixtureKit::Fixture do
       fixture = described_class.new(fixture_identifier, definition)
       on_cache_save = spy("on_cache_save")
       on_cache_saved = spy("on_cache_saved")
-      configuration.on_cache_save { |c| on_cache_save.call(c) }
-      configuration.on_cache_saved { |c, duration| on_cache_saved.call(c, duration) }
+      configuration.on_cache_save { |event| on_cache_save.call(event) }
+      configuration.on_cache_saved { |event, duration| on_cache_saved.call(event, duration) }
       allow(Benchmark).to receive(:realtime) do |&block|
         block.call
         0.25
       end
       allow(cache).to receive(:exists?).and_return(true)
 
-      expect(on_cache_save).to receive(:call).with(cache).ordered
+      expect(on_cache_save).to receive(:call).with(an_instance_of(FixtureKit::Event)).ordered
       expect(cache).to receive(:save).ordered
-      expect(on_cache_saved).to receive(:call).with(cache, be_within(0.001).of(0.25)).ordered
+      expect(on_cache_saved).to receive(:call).with(an_instance_of(FixtureKit::Event), be_within(0.001).of(0.25)).ordered
 
       fixture.generate(force: true)
     end
@@ -97,17 +108,17 @@ RSpec.describe FixtureKit::Fixture do
       fixture = described_class.new(fixture_identifier, definition)
       on_cache_mount = spy("on_cache_mount")
       on_cache_mounted = spy("on_cache_mounted")
-      configuration.on_cache_mount { |c| on_cache_mount.call(c) }
-      configuration.on_cache_mounted { |c, duration| on_cache_mounted.call(c, duration) }
+      configuration.on_cache_mount { |event| on_cache_mount.call(event) }
+      configuration.on_cache_mounted { |event, duration| on_cache_mounted.call(event, duration) }
       allow(Benchmark).to receive(:realtime) do |&block|
         block.call
         0.3
       end
       allow(cache).to receive(:exists?).and_return(true)
 
-      expect(on_cache_mount).to receive(:call).with(cache).ordered
+      expect(on_cache_mount).to receive(:call).with(an_instance_of(FixtureKit::Event)).ordered
       expect(cache).to receive(:load).ordered
-      expect(on_cache_mounted).to receive(:call).with(cache, be_within(0.001).of(0.3)).ordered
+      expect(on_cache_mounted).to receive(:call).with(an_instance_of(FixtureKit::Event), be_within(0.001).of(0.3)).ordered
 
       fixture.mount
     end
@@ -116,8 +127,8 @@ RSpec.describe FixtureKit::Fixture do
       fixture = described_class.new(fixture_identifier, definition)
       on_cache_mount = spy("on_cache_mount")
       on_cache_mounted = spy("on_cache_mounted")
-      configuration.on_cache_mount { |c| on_cache_mount.call(c) }
-      configuration.on_cache_mounted { |c, duration| on_cache_mounted.call(c, duration) }
+      configuration.on_cache_mount { |event| on_cache_mount.call(event) }
+      configuration.on_cache_mounted { |event, duration| on_cache_mounted.call(event, duration) }
 
       expect do
         fixture.mount

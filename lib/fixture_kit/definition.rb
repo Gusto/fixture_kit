@@ -10,6 +10,10 @@ module FixtureKit
       @extends = extends
     end
 
+    def path
+      @definition.source_location.first
+    end
+
     def evaluate(context, parent: nil)
       context.singleton_class.prepend(mixin(parent))
       context.instance_exec(&@definition)
