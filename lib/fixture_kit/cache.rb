@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "active_support/core_ext/array/wrap"
-
 module FixtureKit
   class Cache
     ANONYMOUS_DIRECTORY = "_anonymous"
@@ -43,29 +41,19 @@ module FixtureKit
       end
 
       @data ||= file_cache.read
-      statements_by_connection(data.records).each do |connection, statements|
-        connection.disable_referential_integrity do
-          # execute_batch is private in current supported Rails versions.
-          # This should be revisited when Rails 8.2 makes it public.
-          connection.__send__(:execute_batch, statements, "FixtureKit Load")
-        end
-      end
+      coder.mount(data.records)
 
       Repository.new(data.exposed)
     end
 
     def save
       FixtureKit.runner.adapter.execute do |context|
-        captured_models = SqlSubscriber.capture do
+        coder.observe do
           fixture.definition.evaluate(context, parent: fixture.parent&.mount)
         end
 
-        if fixture.parent
-          captured_models.concat(fixture.parent.cache.data.records.keys)
-        end
-
         @data = MemoryCache.new(
-          records: generate_statements(captured_models),
+          records: coder.save(parent_data: fixture.parent ? fixture.parent.cache.data.records : nil),
           exposed: file_cache.serialize_exposed(fixture.definition.exposed)
         )
       end
@@ -75,55 +63,14 @@ module FixtureKit
 
     private
 
+    def coder
+      @coder ||= ActiveRecordCoder.new
+    end
+
     def file_cache
       @file_cache ||= FileCache.new(
         File.join(configuration.cache_path, "#{identifier}.json")
       )
-    end
-
-    def generate_statements(models)
-      models.uniq.each_with_object({}) do |model, statements|
-        columns = model.column_names
-
-        rows = []
-        model.unscoped.order(:id).find_each do |record|
-          row_values = columns.map do |col|
-            value = record.read_attribute_before_type_cast(col)
-            model.connection.quote(value)
-          end
-          rows << "(#{row_values.join(", ")})"
-        end
-
-        sql = rows.empty? ? nil : build_insert_sql(model.table_name, columns, rows, model.connection)
-        statements[model] = sql
-      end
-    end
-
-    def build_delete_sql(model)
-      "DELETE FROM #{model.quoted_table_name}"
-    end
-
-    def build_insert_sql(table_name, columns, rows, connection)
-      quoted_table = connection.quote_table_name(table_name)
-      quoted_columns = columns.map { |c| connection.quote_column_name(c) }
-
-      "INSERT INTO #{quoted_table} (#{quoted_columns.join(", ")}) VALUES #{rows.join(", ")}"
-    end
-
-    def statements_by_connection(records)
-      deleted_tables = Set.new
-
-      records.each_with_object({}) do |(model, sql), grouped|
-        connection = model.connection
-        grouped[connection] ||= []
-
-        table_key = [connection, model.table_name]
-        if deleted_tables.add?(table_key)
-          grouped[connection] << build_delete_sql(model)
-        end
-
-        grouped[connection] << sql if sql
-      end
     end
   end
 end

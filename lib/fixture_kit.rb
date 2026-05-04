@@ -20,7 +20,6 @@ module FixtureKit
   autoload :Definition, File.expand_path("fixture_kit/definition", __dir__)
   autoload :Registry, File.expand_path("fixture_kit/registry", __dir__)
   autoload :Repository, File.expand_path("fixture_kit/repository", __dir__)
-  autoload :SqlSubscriber, File.expand_path("fixture_kit/sql_subscriber", __dir__)
   autoload :Cache, File.expand_path("fixture_kit/cache", __dir__)
   autoload :FileCache, File.expand_path("fixture_kit/file_cache", __dir__)
   autoload :MemoryCache, File.expand_path("fixture_kit/memory_cache", __dir__)
@@ -28,6 +27,8 @@ module FixtureKit
   autoload :Adapter, File.expand_path("fixture_kit/adapter", __dir__)
   autoload :MinitestAdapter, File.expand_path("fixture_kit/adapters/minitest_adapter", __dir__)
   autoload :RSpecAdapter, File.expand_path("fixture_kit/adapters/rspec_adapter", __dir__)
+  autoload :Coder, File.expand_path("fixture_kit/coder", __dir__)
+  autoload :ActiveRecordCoder, File.expand_path("fixture_kit/coders/active_record_coder", __dir__)
 
   extend Singleton
 end

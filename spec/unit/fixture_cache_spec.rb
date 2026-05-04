@@ -343,13 +343,13 @@ RSpec.describe FixtureKit::Cache do
       primary_connection = User.connection
       analytics_connection = ActivityLog.connection
       primary_statements = [
-        cache.send(:build_delete_sql, User),
+        "DELETE FROM #{User.quoted_table_name}",
         user_sql,
-        cache.send(:build_delete_sql, Project),
+        "DELETE FROM #{Project.quoted_table_name}",
         project_sql
       ]
       analytics_statements = [
-        cache.send(:build_delete_sql, ActivityLog),
+        "DELETE FROM #{ActivityLog.quoted_table_name}",
         activity_log_sql
       ]
 
