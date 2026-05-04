@@ -135,13 +135,13 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       primary_connection = User.connection
       analytics_connection = ActivityLog.connection
       primary_statements = [
-        coder.send(:build_delete_sql, User),
+        "DELETE FROM #{User.quoted_table_name}",
         user_sql,
-        coder.send(:build_delete_sql, Project),
+        "DELETE FROM #{Project.quoted_table_name}",
         project_sql
       ]
       analytics_statements = [
-        coder.send(:build_delete_sql, ActivityLog),
+        "DELETE FROM #{ActivityLog.quoted_table_name}",
         activity_log_sql
       ]
 
