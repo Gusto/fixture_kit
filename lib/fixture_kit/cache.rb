@@ -42,8 +42,7 @@ module FixtureKit
 
       @data ||= file_cache.read
 
-      coders = configuration.coders.map(&:new)
-      coders.each do |coder|
+      configuration.coders.map(&:new).each do |coder|
         coder.mount(data.data_for(coder.class))
       end
 
@@ -52,19 +51,8 @@ module FixtureKit
 
     def save
       FixtureKit.runner.adapter.execute do |context|
-        coders = configuration.coders.map(&:new)
-
-        evaluate(coders) do
-          fixture.definition.evaluate(context, parent: fixture.parent&.mount)
-        end
-
-        data = coders.to_h do |coder|
-          parent_data = fixture.parent ? fixture.parent.cache.data.data_for(coder.class) : nil
-          [coder.class, coder.save(parent_data: parent_data)]
-        end
-
         @data = MemoryCache.new(
-          data: data,
+          data: evaluate(configuration.coders.map(&:new), context),
           exposed: file_cache.serialize_exposed(fixture.definition.exposed)
         )
       end
@@ -74,13 +62,19 @@ module FixtureKit
 
     private
 
-    def evaluate(coders, &block)
+    def evaluate(coders, context, memo = {}, &block)
       if coders.empty?
-        yield
+        fixture.definition.evaluate(context, parent: fixture.parent&.mount)
       else
         coder, *remaining_coders = coders
-        coder.observe { evaluate(remaining_coders, &block) }
+
+        parent_data = fixture.parent ? fixture.parent.cache.data.data_for(coder.class) : nil
+        memo[coder.class] = coder.save(parent_data: parent_data) do
+          evaluate(remaining_coders, context, memo, &block)
+        end
       end
+
+      memo
     end
 
     def file_cache

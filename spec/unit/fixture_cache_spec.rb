@@ -396,7 +396,8 @@ RSpec.describe FixtureKit::Cache do
   describe "with a secondary coder" do
     let(:secondary_coder) do
       klass = Class.new(FixtureKit::Coder) do
-        def save(parent_data: nil)
+        def save(parent_data: nil, &block)
+          yield
           { "key" => "value" }
         end
 

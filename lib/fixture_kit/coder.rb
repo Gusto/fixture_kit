@@ -2,11 +2,7 @@
 
 module FixtureKit
   class Coder
-    def observe(&block)
-      yield
-    end
-
-    def save(parent_data: nil)
+    def save(parent_data: nil, &block)
       raise NotImplementedError, "#{self.class} must implement #save"
     end
 

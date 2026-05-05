@@ -8,30 +8,22 @@ module FixtureKit
     EVENT = "sql.active_record"
     NAME_PATTERN = /\A(?<model_name>.+?) (?:(?:Bulk )?(?:Insert|Upsert)|Create|Destroy|(?:Update|Delete)(?: All)?)\z/
 
-    def initialize
-      @captured_models = Set.new
-    end
-
-    def observe(&block)
+    def save(parent_data: nil, &block)
+      captured_models = Set.new
       subscriber = lambda do |_event_name, _start, _finish, _id, payload|
         name = payload[:name].to_s
         model_name = name[NAME_PATTERN, :model_name]
         next unless model_name
 
-        @captured_models.add(ActiveSupport::Inflector.constantize(model_name))
+        captured_models.add(ActiveSupport::Inflector.constantize(model_name))
       end
 
       ActiveSupport::Notifications.subscribed(subscriber, EVENT, monotonic: true, &block)
 
-      @captured_models.map! { |model| base_table_model(model) }
-    end
+      captured_models.map! { |model| base_table_model(model) }
+      captured_models.merge(parent_data.keys) if parent_data
 
-    def save(parent_data: nil)
-      if parent_data
-        generate_statements(@captured_models + parent_data.keys)
-      else
-        generate_statements(@captured_models)
-      end
+      generate_statements(captured_models)
     end
 
     def mount(data)
