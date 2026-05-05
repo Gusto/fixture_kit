@@ -401,7 +401,7 @@ RSpec.describe FixtureKit::Cache do
           { "key" => "value" }
         end
 
-        def mount(data)
+        def load(data)
         end
       end
       stub_const("FixtureKit::SecondaryCoder", klass)

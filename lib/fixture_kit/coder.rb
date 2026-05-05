@@ -6,8 +6,8 @@ module FixtureKit
       raise NotImplementedError, "#{self.class} must implement #save"
     end
 
-    def mount(data)
-      raise NotImplementedError, "#{self.class} must implement #mount"
+    def load(data)
+      raise NotImplementedError, "#{self.class} must implement #load"
     end
   end
 end

@@ -26,7 +26,7 @@ module FixtureKit
       generate_statements(captured_models)
     end
 
-    def mount(data)
+    def load(data)
       statements_by_connection(data).each do |connection, statements|
         connection.disable_referential_integrity do
           # execute_batch is private in current supported Rails versions.

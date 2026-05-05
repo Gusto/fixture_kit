@@ -43,7 +43,7 @@ module FixtureKit
       @data ||= file_cache.read
 
       configuration.coders.map(&:new).each do |coder|
-        coder.mount(data.data_for(coder.class))
+        coder.load(data.data_for(coder.class))
       end
 
       Repository.new(data.exposed)

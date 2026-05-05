@@ -106,7 +106,7 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     end
   end
 
-  describe "#mount" do
+  describe "#load" do
     it "documents that connection execute_batch is currently private" do
       connection = User.connection
 
@@ -144,7 +144,7 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       expect(analytics_connection).to receive(:disable_referential_integrity).once.and_yield
       expect(analytics_connection).to receive(:execute_batch).with(analytics_statements, "FixtureKit Load").once
 
-      coder.mount(records)
+      coder.load(records)
     end
   end
 
