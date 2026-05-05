@@ -21,7 +21,7 @@ module FixtureKit
 
       data = file_data.fetch("data").each_with_object({}) do |(coder_name, coder_data), hash|
         coder_class = ActiveSupport::Inflector.constantize(coder_name)
-        hash[coder_class] = deserialize_coder_data(coder_class, coder_data)
+        hash[coder_class] = coder_class.new.decode(coder_data)
       end
 
       exposed = file_data.fetch("exposed").each_with_object({}) do |(name, value), hash|
@@ -36,8 +36,15 @@ module FixtureKit
     end
 
     def write(data)
+      file_data = {
+        data: data.data.to_h do |coder_class, coder_data|
+          [coder_class, coder_class.new.encode(coder_data)]
+        end,
+        exposed: data.exposed,
+      }
+
       FileUtils.mkdir_p(File.dirname(path))
-      File.write(path, JSON.pretty_generate(data.to_h))
+      File.write(path, JSON.pretty_generate(file_data))
     end
 
     def serialize_exposed(exposed)
@@ -47,19 +54,6 @@ module FixtureKit
         else
           hash[name] = { record.class => record.id }
         end
-      end
-    end
-
-    private
-
-    def deserialize_coder_data(coder_class, coder_data)
-      case coder_class
-      when FixtureKit::ActiveRecordCoder.singleton_class
-        coder_data.transform_keys do |model_name|
-          ActiveSupport::Inflector.constantize(model_name)
-        end
-      else
-        coder_data
       end
     end
   end

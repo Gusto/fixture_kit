@@ -442,7 +442,70 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
       fixture_cache.clear_memory
 
-      expect { fixture_cache.load }.not_to raise_error
+      expect_any_instance_of(FixtureKit::SecondaryCoder).to receive(:load).with({ "key" => "value" }).and_call_original
+      fixture_cache.load
+    end
+  end
+
+  describe "with a secondary coder that defines custom encode/decode" do
+    let(:secondary_coder) do
+      klass = Class.new(FixtureKit::Coder) do
+        def save(parent_data: nil, &block)
+          yield if block_given?
+          { "raw" => "value" }
+        end
+
+        def load(data)
+        end
+
+        def encode(data)
+          { "encoded" => true, "payload" => data }
+        end
+
+        def decode(data)
+          data.fetch("payload")
+        end
+      end
+      stub_const("FixtureKit::EncodingCoder", klass)
+    end
+
+    before do
+      runner.configuration.register(secondary_coder)
+    end
+
+    it "writes encoded data to disk" do
+      fixture_definition = FixtureKit::Definition.new do
+        alice = User.create!(name: "Alice", email: "alice-cache@example.com")
+        expose(alice: alice)
+      end
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"].keys).to include("User")
+      expect(data["data"]["FixtureKit::EncodingCoder"]).to eq({ "encoded" => true, "payload" => { "raw" => "value" } })
+    end
+
+    it "passes decoded data to load after a round-trip through disk" do
+      fixture_definition = FixtureKit::Definition.new {}
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+      fixture_cache.clear_memory
+
+      expect_any_instance_of(FixtureKit::EncodingCoder).to receive(:load).with({ "raw" => "value" }).and_call_original
+      fixture_cache.load
     end
   end
 end

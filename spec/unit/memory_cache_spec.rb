@@ -20,18 +20,4 @@ RSpec.describe FixtureKit::MemoryCache do
       expect(cache).to be_frozen
     end
   end
-
-  describe "#to_h" do
-    it "returns a hash of data and exposed" do
-      cache = described_class.new(
-        data: { FixtureKit::ActiveRecordCoder => { "User" => "INSERT INTO users VALUES (1)" } },
-        exposed: { alice: { "User" => 1 } }
-      )
-
-      expect(cache.to_h).to eq({
-        data: { FixtureKit::ActiveRecordCoder => { "User" => "INSERT INTO users VALUES (1)" } },
-        exposed: { alice: { "User" => 1 } }
-      })
-    end
-  end
 end

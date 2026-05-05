@@ -9,5 +9,13 @@ module FixtureKit
     def load(data)
       raise NotImplementedError, "#{self.class} must implement #load"
     end
+
+    def encode(data)
+      data
+    end
+
+    def decode(data)
+      data
+    end
   end
 end

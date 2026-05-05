@@ -36,6 +36,12 @@ module FixtureKit
       end
     end
 
+    def decode(data)
+      data.transform_keys do |model_name|
+        ActiveSupport::Inflector.constantize(model_name)
+      end
+    end
+
     private
 
     def base_table_model(model)

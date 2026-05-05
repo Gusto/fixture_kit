@@ -13,9 +13,5 @@ module FixtureKit
     def data_for(coder_class)
       data.fetch(coder_class)
     end
-
-    def to_h
-      { data: data, exposed: exposed }
-    end
   end
 end
