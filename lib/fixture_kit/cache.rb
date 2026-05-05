@@ -6,7 +6,7 @@ module FixtureKit
 
     include ConfigurationHelper
 
-    attr_reader :fixture, :data
+    attr_reader :fixture, :content
 
     def initialize(fixture)
       @fixture = fixture
@@ -28,11 +28,11 @@ module FixtureKit
     end
 
     def exists?
-      data || file_cache.exists?
+      content || file_cache.exists?
     end
 
     def clear_memory
-      @data = nil
+      @content = nil
     end
 
     def load
@@ -40,41 +40,41 @@ module FixtureKit
         raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{fixture.identifier}'"
       end
 
-      @data ||= file_cache.read
+      @content ||= file_cache.read
 
       FixtureKit.runner.coders.each do |coder|
-        coder.load(data.data_for(coder.class))
+        coder.load(content.data_for(coder.class))
       end
 
-      Repository.new(data.exposed)
+      Repository.new(content.exposed)
     end
 
     def save
       FixtureKit.runner.adapter.execute do |context|
-        @data = MemoryCache.new(
+        @content = MemoryCache.new(
           data: evaluate(FixtureKit.runner.coders, context),
           exposed: file_cache.serialize_exposed(fixture.definition.exposed)
         )
       end
 
-      file_cache.write(data)
+      file_cache.write(content)
     end
 
     private
 
-    def evaluate(coders, context, memo = {}, &block)
+    def evaluate(coders, context, data = {}, &block)
       if coders.empty?
         fixture.definition.evaluate(context, parent: fixture.parent&.mount)
       else
         coder, *remaining_coders = coders
 
-        parent_data = fixture.parent ? fixture.parent.cache.data.data_for(coder.class) : nil
-        memo[coder.class] = coder.save(parent_data: parent_data) do
-          evaluate(remaining_coders, context, memo, &block)
+        parent_data = fixture.parent ? fixture.parent.cache.content.data_for(coder.class) : nil
+        data[coder.class] = coder.save(parent_data: parent_data) do
+          evaluate(remaining_coders, context, data, &block)
         end
       end
 
-      memo
+      data
     end
 
     def file_cache

@@ -17,14 +17,14 @@ module FixtureKit
     end
 
     def read
-      file_data = JSON.parse(File.read(path))
+      content = JSON.parse(File.read(path))
 
-      data = file_data.fetch("data").to_h do |coder_name, coder_data|
+      data = content.fetch("data").to_h do |coder_name, coder_data|
         coder = coder_for(coder_name)
         [coder.class, coder.decode(coder_data)]
       end
 
-      exposed = file_data.fetch("exposed").each_with_object({}) do |(name, value), hash|
+      exposed = content.fetch("exposed").each_with_object({}) do |(name, value), hash|
         if value.is_a?(Array)
           hash[name.to_sym] = value.map { |r| { ActiveSupport::Inflector.constantize(r.keys.first) => r.values.first } }
         else
@@ -36,7 +36,7 @@ module FixtureKit
     end
 
     def write(data)
-      file_data = {
+      content = {
         data: data.data.to_h do |coder_class, coder_data|
           coder = coder_for(coder_class.name)
           [coder.class, coder.encode(coder_data)]
@@ -45,7 +45,7 @@ module FixtureKit
       }
 
       FileUtils.mkdir_p(File.dirname(path))
-      File.write(path, JSON.pretty_generate(file_data))
+      File.write(path, JSON.pretty_generate(content))
     end
 
     def serialize_exposed(exposed)
