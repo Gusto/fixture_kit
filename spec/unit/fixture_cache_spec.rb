@@ -408,7 +408,7 @@ RSpec.describe FixtureKit::Cache do
     end
 
     before do
-      runner.configuration.register_coder(secondary_coder)
+      runner.configuration.register(secondary_coder)
     end
 
     it "saves secondary coder data to disk" do

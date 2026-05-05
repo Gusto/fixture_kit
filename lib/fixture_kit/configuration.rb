@@ -15,7 +15,7 @@ module FixtureKit
       @coders = Set.new([ActiveRecordCoder])
     end
 
-    def register_coder(coder)
+    def register(coder)
       @coders.add(coder)
     end
 
