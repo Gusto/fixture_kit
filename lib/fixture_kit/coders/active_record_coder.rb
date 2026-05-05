@@ -13,22 +13,25 @@ module FixtureKit
     end
 
     def observe(&block)
-      models = Set.new
       subscriber = lambda do |_event_name, _start, _finish, _id, payload|
         name = payload[:name].to_s
         model_name = name[NAME_PATTERN, :model_name]
         next unless model_name
 
-        models.add(ActiveSupport::Inflector.constantize(model_name))
+        @captured_models.add(ActiveSupport::Inflector.constantize(model_name))
       end
 
       ActiveSupport::Notifications.subscribed(subscriber, EVENT, monotonic: true, &block)
 
-      @captured_models += models.map { |model| base_table_model(model) }.uniq
+      @captured_models.map! { |model| base_table_model(model) }
     end
 
     def save(parent_data: nil)
-      generate_statements(@captured_models + (parent_data ? parent_data.keys : []))
+      if parent_data
+        generate_statements(@captured_models + parent_data.keys)
+      else
+        generate_statements(@captured_models)
+      end
     end
 
     def mount(data)
@@ -49,7 +52,7 @@ module FixtureKit
     end
 
     def generate_statements(models)
-      models.uniq.each_with_object({}) do |model, statements|
+      models.each_with_object({}) do |model, statements|
         columns = model.column_names
 
         rows = []
