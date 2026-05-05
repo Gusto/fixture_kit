@@ -77,11 +77,11 @@ class FixtureKitQueryEventCoverageIntegrationTest < ActiveSupport::TestCase
     cache_file = File.join(FixtureKit.runner.configuration.cache_path, "query_type_events.json")
     cache_data = JSON.parse(File.read(cache_file))
 
-    assert_includes cache_data.fetch("records").keys, "User"
-    assert_includes cache_data.fetch("records").keys, "Project"
-    assert_includes cache_data.fetch("records").keys, "Task"
-    assert_includes cache_data.fetch("records").keys, "Comment"
-    assert_includes cache_data.fetch("records").keys, "ActivityLog"
+    assert_includes cache_data.fetch("data").fetch("FixtureKit::ActiveRecordCoder").keys, "User"
+    assert_includes cache_data.fetch("data").fetch("FixtureKit::ActiveRecordCoder").keys, "Project"
+    assert_includes cache_data.fetch("data").fetch("FixtureKit::ActiveRecordCoder").keys, "Task"
+    assert_includes cache_data.fetch("data").fetch("FixtureKit::ActiveRecordCoder").keys, "Comment"
+    assert_includes cache_data.fetch("data").fetch("FixtureKit::ActiveRecordCoder").keys, "ActivityLog"
     puts "FKIT_ASSERT:QUERY_TYPES_CAPTURED"
   end
 end
