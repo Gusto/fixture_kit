@@ -30,6 +30,10 @@ module FixtureKit
       @adapter ||= configuration.adapter.new(configuration.adapter_options)
     end
 
+    def coders
+      @coders ||= configuration.coders.map(&:new)
+    end
+
     def started?
       @started
     end

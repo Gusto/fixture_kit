@@ -19,9 +19,9 @@ module FixtureKit
     def read
       file_data = JSON.parse(File.read(path))
 
-      data = file_data.fetch("data").each_with_object({}) do |(coder_name, coder_data), hash|
-        coder_class = ActiveSupport::Inflector.constantize(coder_name)
-        hash[coder_class] = coder_class.new.decode(coder_data)
+      data = file_data.fetch("data").to_h do |coder_name, coder_data|
+        coder = coder_for(coder_name)
+        [coder.class, coder.decode(coder_data)]
       end
 
       exposed = file_data.fetch("exposed").each_with_object({}) do |(name, value), hash|
@@ -38,7 +38,8 @@ module FixtureKit
     def write(data)
       file_data = {
         data: data.data.to_h do |coder_class, coder_data|
-          [coder_class, coder_class.new.encode(coder_data)]
+          coder = coder_for(coder_class.name)
+          [coder.class, coder.encode(coder_data)]
         end,
         exposed: data.exposed,
       }
@@ -55,6 +56,13 @@ module FixtureKit
           hash[name] = { record.class => record.id }
         end
       end
+    end
+
+    private
+
+    def coder_for(class_name)
+      @coder_for ||= FixtureKit.runner.coders.index_by { |c| c.class.name }
+      @coder_for.fetch(class_name)
     end
   end
 end

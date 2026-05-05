@@ -42,7 +42,7 @@ module FixtureKit
 
       @data ||= file_cache.read
 
-      configuration.coders.map(&:new).each do |coder|
+      FixtureKit.runner.coders.each do |coder|
         coder.load(data.data_for(coder.class))
       end
 
@@ -52,7 +52,7 @@ module FixtureKit
     def save
       FixtureKit.runner.adapter.execute do |context|
         @data = MemoryCache.new(
-          data: evaluate(configuration.coders.map(&:new), context),
+          data: evaluate(FixtureKit.runner.coders, context),
           exposed: file_cache.serialize_exposed(fixture.definition.exposed)
         )
       end
