@@ -393,4 +393,55 @@ RSpec.describe FixtureKit::Cache do
 
   end
 
+  describe "with a secondary coder" do
+    let(:secondary_coder) do
+      klass = Class.new(FixtureKit::Coder) do
+        def save(parent_data: nil)
+          { "key" => "value" }
+        end
+
+        def mount(data)
+        end
+      end
+      stub_const("FixtureKit::SecondaryCoder", klass)
+    end
+
+    before do
+      runner.configuration.register_coder(secondary_coder)
+    end
+
+    it "saves secondary coder data to disk" do
+      fixture_definition = FixtureKit::Definition.new do
+        alice = User.create!(name: "Alice", email: "alice-cache@example.com")
+        expose(alice: alice)
+      end
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"].keys).to include("User")
+      expect(data["data"]["FixtureKit::SecondaryCoder"]).to eq({ "key" => "value" })
+    end
+
+    it "loads secondary coder data from disk" do
+      fixture_definition = FixtureKit::Definition.new {}
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+      fixture_cache.clear_memory
+
+      expect { fixture_cache.load }.not_to raise_error
+    end
+  end
 end
