@@ -231,7 +231,7 @@ RSpec.describe FixtureKit::Cache do
         data: { FixtureKit::ActiveRecordCoder => { User => nil } },
         exposed: {}
       )
-      parent_cache = instance_double(FixtureKit::Cache, data: parent_cache_data)
+      parent_cache = instance_double(FixtureKit::Cache, content: parent_cache_data)
       parent_fixture = instance_double(FixtureKit::Fixture, cache: parent_cache)
       allow(parent_fixture).to receive(:mount) do
         User.create!(name: "Parent Owner", email: "parent-owner@example.com")
@@ -259,12 +259,12 @@ RSpec.describe FixtureKit::Cache do
   end
 
   describe "#clear_memory" do
-    it "nils out @data" do
-      cache.instance_variable_set(:@data, FixtureKit::MemoryCache.new(data: {}, exposed: {}))
+    it "nils out @content" do
+      cache.instance_variable_set(:@content, FixtureKit::MemoryCache.new(data: {}, exposed: {}))
 
       cache.clear_memory
 
-      expect(cache.data).to be_nil
+      expect(cache.content).to be_nil
     end
 
     it "still reports exists? as true when file cache is present" do
@@ -283,7 +283,7 @@ RSpec.describe FixtureKit::Cache do
 
       fixture_cache.clear_memory
 
-      expect(fixture_cache.data).to be_nil
+      expect(fixture_cache.content).to be_nil
       expect(fixture_cache.exists?).to be(true)
     end
 
@@ -302,12 +302,12 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
 
       fixture_cache.clear_memory
-      expect(fixture_cache.data).to be_nil
+      expect(fixture_cache.content).to be_nil
 
       User.delete_all
       repository = fixture_cache.load
 
-      expect(fixture_cache.data).not_to be_nil
+      expect(fixture_cache.content).not_to be_nil
       expect(repository.alice).to be_a(User)
       expect(repository.alice.name).to eq("Alice")
     end
@@ -329,7 +329,7 @@ RSpec.describe FixtureKit::Cache do
       allow(cache).to receive(:exists?).and_return(true)
       allow(FixtureKit::Repository).to receive(:new).with({}).and_return(:repository)
       cache.instance_variable_set(
-        :@data,
+        :@content,
         FixtureKit::MemoryCache.new(
           data: {
             FixtureKit::ActiveRecordCoder => {
@@ -396,12 +396,12 @@ RSpec.describe FixtureKit::Cache do
   describe "with a secondary coder" do
     let(:secondary_coder) do
       klass = Class.new(FixtureKit::Coder) do
-        def save(parent_data: nil, &block)
+        def generate(parent_data: nil, &block)
           yield
           { "key" => "value" }
         end
 
-        def load(data)
+        def mount(data)
         end
       end
       stub_const("FixtureKit::SecondaryCoder", klass)
@@ -442,7 +442,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
       fixture_cache.clear_memory
 
-      expect_any_instance_of(FixtureKit::SecondaryCoder).to receive(:load).with({ "key" => "value" }).and_call_original
+      expect_any_instance_of(FixtureKit::SecondaryCoder).to receive(:mount).with({ "key" => "value" }).and_call_original
       fixture_cache.load
     end
   end
@@ -450,12 +450,12 @@ RSpec.describe FixtureKit::Cache do
   describe "with a secondary coder that defines custom encode/decode" do
     let(:secondary_coder) do
       klass = Class.new(FixtureKit::Coder) do
-        def save(parent_data: nil, &block)
+        def generate(parent_data: nil, &block)
           yield if block_given?
           { "raw" => "value" }
         end
 
-        def load(data)
+        def mount(data)
         end
 
         def encode(data)
@@ -504,7 +504,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
       fixture_cache.clear_memory
 
-      expect_any_instance_of(FixtureKit::EncodingCoder).to receive(:load).with({ "raw" => "value" }).and_call_original
+      expect_any_instance_of(FixtureKit::EncodingCoder).to receive(:mount).with({ "raw" => "value" }).and_call_original
       fixture_cache.load
     end
   end

@@ -36,17 +36,17 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     destroyed.destroy!
   end
 
-  describe "#save" do
+  describe "#generate" do
     it "captures user model writes for all supported write operation types" do
       suffix = SecureRandom.hex(6)
 
-      result = coder.save { exercise_user_write_operations(suffix) }
+      result = coder.generate { exercise_user_write_operations(suffix) }
 
       expect(result).to have_key(User)
     end
 
     it "resolves STI subclasses to their base table-owning model" do
-      result = coder.save do
+      result = coder.generate do
         Car.create!(name: "Sedan", year: 2024)
         Truck.create!(name: "Pickup", year: 2023)
       end
@@ -55,7 +55,7 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     end
 
     it "resolves STI subclasses whose base model inherits directly from ActiveRecord::Base" do
-      result = coder.save do
+      result = coder.generate do
         Phone.create!(name: "iPhone")
         Tablet.create!(name: "iPad")
       end
@@ -66,7 +66,7 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     it "captures models written with update operations" do
       user = User.create!(name: "Alice", email: "alice-update@example.com")
 
-      result = coder.save { User.find(user.id).update!(name: "Alice Updated") }
+      result = coder.generate { User.find(user.id).update!(name: "Alice Updated") }
 
       expect(result).to have_key(User)
     end
@@ -75,7 +75,7 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       User.create!(name: "Alice", email: "alice-delete@example.com")
       doomed = User.create!(name: "Bob", email: "bob-delete@example.com")
 
-      result = coder.save { doomed.destroy! }
+      result = coder.generate { doomed.destroy! }
 
       expect(result).to have_key(User)
     end
@@ -83,7 +83,7 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     it "generates INSERT statements for captured models" do
       User.create!(name: "Alice", email: "alice-save@example.com")
 
-      result = coder.save { User.create!(name: "Bob", email: "bob-save@example.com") }
+      result = coder.generate { User.create!(name: "Bob", email: "bob-save@example.com") }
 
       expect(result[User]).to match(/INSERT INTO/)
     end
@@ -91,14 +91,14 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     it "stores nil sql for a model when its table is empty after changes" do
       user = User.create!(name: "Alice", email: "alice-empty@example.com")
 
-      expect(coder.save { user.destroy! }[User]).to be_nil
+      expect(coder.generate { user.destroy! }[User]).to be_nil
     end
 
     it "includes models from parent_data that were not directly captured" do
       User.create!(name: "Alice", email: "alice-parent@example.com")
 
       parent_data = { User => "INSERT INTO users ..." }
-      result = coder.save(parent_data: parent_data) do
+      result = coder.generate(parent_data: parent_data) do
         Project.create!(name: "Project", owner: User.find_by!(email: "alice-parent@example.com"))
       end
 
@@ -106,7 +106,7 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     end
   end
 
-  describe "#load" do
+  describe "#mount" do
     it "documents that connection execute_batch is currently private" do
       connection = User.connection
 
@@ -144,7 +144,7 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       expect(analytics_connection).to receive(:disable_referential_integrity).once.and_yield
       expect(analytics_connection).to receive(:execute_batch).with(analytics_statements, "FixtureKit Load").once
 
-      coder.load(records)
+      coder.mount(records)
     end
   end
 

@@ -8,7 +8,7 @@ module FixtureKit
     EVENT = "sql.active_record"
     NAME_PATTERN = /\A(?<model_name>.+?) (?:(?:Bulk )?(?:Insert|Upsert)|Create|Destroy|(?:Update|Delete)(?: All)?)\z/
 
-    def save(parent_data: nil, &block)
+    def generate(parent_data: nil, &block)
       captured_models = Set.new
       subscriber = lambda do |_event_name, _start, _finish, _id, payload|
         name = payload[:name].to_s
@@ -26,7 +26,7 @@ module FixtureKit
       generate_statements(captured_models)
     end
 
-    def load(data)
+    def mount(data)
       statements_by_connection(data).each do |connection, statements|
         connection.disable_referential_integrity do
           # execute_batch is private in current supported Rails versions.
