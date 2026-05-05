@@ -2,16 +2,16 @@
 
 module FixtureKit
   class MemoryCache
-    attr_reader :records, :exposed
+    attr_reader :data, :exposed
 
-    def initialize(records:, exposed:)
-      @records = records
+    def initialize(data:, exposed:)
+      @data = data
       @exposed = exposed
       freeze
     end
 
-    def to_h
-      { records: records, exposed: exposed }
+    def data_for(coder_class)
+      data.fetch(coder_class)
     end
   end
 end

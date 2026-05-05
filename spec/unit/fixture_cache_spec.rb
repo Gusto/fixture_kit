@@ -144,7 +144,7 @@ RSpec.describe FixtureKit::Cache do
       path = fixture_cache.path
       expect(File.exist?(path)).to be(true)
       data = JSON.parse(File.read(path))
-      expect(data["records"]).to have_key("User")
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"]).to have_key("User")
       expect(data["exposed"]).to have_key("alice")
     end
 
@@ -167,7 +167,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
 
       data = JSON.parse(File.read(fixture_cache.path))
-      expect(data["records"]).to have_key("User")
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"]).to have_key("User")
 
       User.delete_all
       repository = fixture_cache.load
@@ -194,7 +194,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
 
       data = JSON.parse(File.read(fixture_cache.path))
-      expect(data["records"]).to have_key("User")
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"]).to have_key("User")
 
       User.delete_all
       repository = fixture_cache.load
@@ -219,7 +219,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
 
       data = JSON.parse(File.read(fixture_cache.path))
-      expect(data["records"]["User"]).to be_nil
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"]["User"]).to be_nil
 
       User.create!(name: "Temporary", email: "temporary@example.com")
       fixture_cache.load
@@ -228,7 +228,7 @@ RSpec.describe FixtureKit::Cache do
 
     it "includes parent fixture model records when saving inherited fixtures" do
       parent_cache_data = FixtureKit::MemoryCache.new(
-        records: { User => nil },
+        data: { FixtureKit::ActiveRecordCoder => { User => nil } },
         exposed: {}
       )
       parent_cache = instance_double(FixtureKit::Cache, data: parent_cache_data)
@@ -254,13 +254,13 @@ RSpec.describe FixtureKit::Cache do
       child_cache.save
 
       data = JSON.parse(File.read(child_cache.path))
-      expect(data["records"].keys).to include("User", "Project")
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"].keys).to include("User", "Project")
     end
   end
 
   describe "#clear_memory" do
     it "nils out @data" do
-      cache.instance_variable_set(:@data, FixtureKit::MemoryCache.new(records: {}, exposed: {}))
+      cache.instance_variable_set(:@data, FixtureKit::MemoryCache.new(data: {}, exposed: {}))
 
       cache.clear_memory
 
@@ -331,10 +331,12 @@ RSpec.describe FixtureKit::Cache do
       cache.instance_variable_set(
         :@data,
         FixtureKit::MemoryCache.new(
-          records: {
-            User => user_sql,
-            Project => project_sql,
-            ActivityLog => activity_log_sql
+          data: {
+            FixtureKit::ActiveRecordCoder => {
+              User => user_sql,
+              Project => project_sql,
+              ActivityLog => activity_log_sql
+            }
           },
           exposed: {}
         )
@@ -391,4 +393,119 @@ RSpec.describe FixtureKit::Cache do
 
   end
 
+  describe "with a secondary coder" do
+    let(:secondary_coder) do
+      klass = Class.new(FixtureKit::Coder) do
+        def save(parent_data: nil, &block)
+          yield
+          { "key" => "value" }
+        end
+
+        def load(data)
+        end
+      end
+      stub_const("FixtureKit::SecondaryCoder", klass)
+    end
+
+    before do
+      runner.configuration.register(secondary_coder)
+    end
+
+    it "saves secondary coder data to disk" do
+      fixture_definition = FixtureKit::Definition.new do
+        alice = User.create!(name: "Alice", email: "alice-cache@example.com")
+        expose(alice: alice)
+      end
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"].keys).to include("User")
+      expect(data["data"]["FixtureKit::SecondaryCoder"]).to eq({ "key" => "value" })
+    end
+
+    it "loads secondary coder data from disk" do
+      fixture_definition = FixtureKit::Definition.new {}
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+      fixture_cache.clear_memory
+
+      expect_any_instance_of(FixtureKit::SecondaryCoder).to receive(:load).with({ "key" => "value" }).and_call_original
+      fixture_cache.load
+    end
+  end
+
+  describe "with a secondary coder that defines custom encode/decode" do
+    let(:secondary_coder) do
+      klass = Class.new(FixtureKit::Coder) do
+        def save(parent_data: nil, &block)
+          yield if block_given?
+          { "raw" => "value" }
+        end
+
+        def load(data)
+        end
+
+        def encode(data)
+          { "encoded" => true, "payload" => data }
+        end
+
+        def decode(data)
+          data.fetch("payload")
+        end
+      end
+      stub_const("FixtureKit::EncodingCoder", klass)
+    end
+
+    before do
+      runner.configuration.register(secondary_coder)
+    end
+
+    it "writes encoded data to disk" do
+      fixture_definition = FixtureKit::Definition.new do
+        alice = User.create!(name: "Alice", email: "alice-cache@example.com")
+        expose(alice: alice)
+      end
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+
+      data = JSON.parse(File.read(fixture_cache.path))
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"].keys).to include("User")
+      expect(data["data"]["FixtureKit::EncodingCoder"]).to eq({ "encoded" => true, "payload" => { "raw" => "value" } })
+    end
+
+    it "passes decoded data to load after a round-trip through disk" do
+      fixture_definition = FixtureKit::Definition.new {}
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+      fixture_cache.clear_memory
+
+      expect_any_instance_of(FixtureKit::EncodingCoder).to receive(:load).with({ "raw" => "value" }).and_call_original
+      fixture_cache.load
+    end
+  end
 end

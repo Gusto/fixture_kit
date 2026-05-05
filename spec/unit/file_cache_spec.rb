@@ -37,7 +37,7 @@ RSpec.describe FixtureKit::FileCache do
   describe "#write and #read" do
     it "round-trips MemoryCache through JSON on disk" do
       data = FixtureKit::MemoryCache.new(
-        records: { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" },
+        data: { FixtureKit::ActiveRecordCoder => { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" } },
         exposed: { alice: { User => 1 } }
       )
 
@@ -46,25 +46,25 @@ RSpec.describe FixtureKit::FileCache do
       expect(File.exist?(file_path)).to be(true)
       result = file_cache.read
       expect(result).to be_a(FixtureKit::MemoryCache)
-      expect(result.records).to eq({ User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" })
+      expect(result.data[FixtureKit::ActiveRecordCoder]).to eq({ User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" })
       expect(result.exposed).to eq({ alice: { User => 1 } })
     end
 
     it "round-trips MemoryCache with nil sql values" do
       data = FixtureKit::MemoryCache.new(
-        records: { User => nil },
+        data: { FixtureKit::ActiveRecordCoder => { User => nil } },
         exposed: {}
       )
 
       file_cache.write(data)
       result = file_cache.read
 
-      expect(result.records).to eq({ User => nil })
+      expect(result.data[FixtureKit::ActiveRecordCoder]).to eq({ User => nil })
     end
 
     it "round-trips MemoryCache with array exposed values" do
       data = FixtureKit::MemoryCache.new(
-        records: {},
+        data: { FixtureKit::ActiveRecordCoder => {} },
         exposed: { users: [{ User => 1 }, { User => 2 }] }
       )
 
@@ -77,7 +77,7 @@ RSpec.describe FixtureKit::FileCache do
     it "creates intermediate directories" do
       nested_path = File.join(cache_path, "nested", "deep", "fixture.json")
       nested_file_cache = described_class.new(nested_path)
-      data = FixtureKit::MemoryCache.new(records: {}, exposed: {})
+      data = FixtureKit::MemoryCache.new(data: {}, exposed: {})
 
       nested_file_cache.write(data)
 

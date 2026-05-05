@@ -103,7 +103,7 @@ RSpec.describe "FixtureKit integration" do
       cache_file = File.join(FixtureKit.runner.configuration.cache_path, "query_type_events.json")
       cache_data = JSON.parse(File.read(cache_file))
 
-      expect(cache_data.fetch("records").keys).to include("User", "Project", "Task", "Comment", "ActivityLog")
+      expect(cache_data.fetch("data").fetch("FixtureKit::ActiveRecordCoder").keys).to include("User", "Project", "Task", "Comment", "ActivityLog")
       puts "FKIT_ASSERT:QUERY_TYPES_CAPTURED"
     end
   end

@@ -8,39 +8,37 @@ module FixtureKit
     EVENT = "sql.active_record"
     NAME_PATTERN = /\A(?<model_name>.+?) (?:(?:Bulk )?(?:Insert|Upsert)|Create|Destroy|(?:Update|Delete)(?: All)?)\z/
 
-    def initialize
-      @captured_models = Set.new
-    end
-
-    def observe(&block)
+    def save(parent_data: nil, &block)
+      captured_models = Set.new
       subscriber = lambda do |_event_name, _start, _finish, _id, payload|
         name = payload[:name].to_s
         model_name = name[NAME_PATTERN, :model_name]
         next unless model_name
 
-        @captured_models.add(ActiveSupport::Inflector.constantize(model_name))
+        captured_models.add(ActiveSupport::Inflector.constantize(model_name))
       end
 
       ActiveSupport::Notifications.subscribed(subscriber, EVENT, monotonic: true, &block)
 
-      @captured_models.map! { |model| base_table_model(model) }
+      captured_models.map! { |model| base_table_model(model) }
+      captured_models.merge(parent_data.keys) if parent_data
+
+      generate_statements(captured_models)
     end
 
-    def save(parent_data: nil)
-      if parent_data
-        generate_statements(@captured_models + parent_data.keys)
-      else
-        generate_statements(@captured_models)
-      end
-    end
-
-    def mount(data)
+    def load(data)
       statements_by_connection(data).each do |connection, statements|
         connection.disable_referential_integrity do
           # execute_batch is private in current supported Rails versions.
           # This should be revisited when Rails 8.2 makes it public.
           connection.__send__(:execute_batch, statements, "FixtureKit Load")
         end
+      end
+    end
+
+    def decode(data)
+      data.transform_keys do |model_name|
+        ActiveSupport::Inflector.constantize(model_name)
       end
     end
 

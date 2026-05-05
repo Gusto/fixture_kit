@@ -36,83 +36,77 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     destroyed.destroy!
   end
 
-  describe "#observe" do
+  describe "#save" do
     it "captures user model writes for all supported write operation types" do
       suffix = SecureRandom.hex(6)
 
-      coder.observe { exercise_user_write_operations(suffix) }
+      result = coder.save { exercise_user_write_operations(suffix) }
 
-      expect(coder.save).to have_key(User)
+      expect(result).to have_key(User)
     end
 
     it "resolves STI subclasses to their base table-owning model" do
-      coder.observe do
+      result = coder.save do
         Car.create!(name: "Sedan", year: 2024)
         Truck.create!(name: "Pickup", year: 2023)
       end
 
-      expect(coder.save.keys).to contain_exactly(Vehicle)
+      expect(result.keys).to contain_exactly(Vehicle)
     end
 
     it "resolves STI subclasses whose base model inherits directly from ActiveRecord::Base" do
-      coder.observe do
+      result = coder.save do
         Phone.create!(name: "iPhone")
         Tablet.create!(name: "iPad")
       end
 
-      expect(coder.save.keys).to contain_exactly(Gadget)
+      expect(result.keys).to contain_exactly(Gadget)
     end
 
     it "captures models written with update operations" do
       user = User.create!(name: "Alice", email: "alice-update@example.com")
 
-      coder.observe do
-        User.find(user.id).update!(name: "Alice Updated")
-      end
+      result = coder.save { User.find(user.id).update!(name: "Alice Updated") }
 
-      expect(coder.save).to have_key(User)
+      expect(result).to have_key(User)
     end
 
     it "captures models written with delete and destroy operations" do
       User.create!(name: "Alice", email: "alice-delete@example.com")
       doomed = User.create!(name: "Bob", email: "bob-delete@example.com")
 
-      coder.observe { doomed.destroy! }
+      result = coder.save { doomed.destroy! }
 
-      expect(coder.save).to have_key(User)
+      expect(result).to have_key(User)
     end
-  end
 
-  describe "#save" do
     it "generates INSERT statements for captured models" do
       User.create!(name: "Alice", email: "alice-save@example.com")
 
-      coder.observe { User.create!(name: "Bob", email: "bob-save@example.com") }
+      result = coder.save { User.create!(name: "Bob", email: "bob-save@example.com") }
 
-      result = coder.save
       expect(result[User]).to match(/INSERT INTO/)
     end
 
     it "stores nil sql for a model when its table is empty after changes" do
       user = User.create!(name: "Alice", email: "alice-empty@example.com")
 
-      coder.observe { user.destroy! }
-
-      expect(coder.save[User]).to be_nil
+      expect(coder.save { user.destroy! }[User]).to be_nil
     end
 
     it "includes models from parent_data that were not directly captured" do
       User.create!(name: "Alice", email: "alice-parent@example.com")
-      coder.observe { Project.create!(name: "Project", owner: User.find_by!(email: "alice-parent@example.com")) }
 
       parent_data = { User => "INSERT INTO users ..." }
-      result = coder.save(parent_data: parent_data)
+      result = coder.save(parent_data: parent_data) do
+        Project.create!(name: "Project", owner: User.find_by!(email: "alice-parent@example.com"))
+      end
 
       expect(result.keys).to include(User, Project)
     end
   end
 
-  describe "#mount" do
+  describe "#load" do
     it "documents that connection execute_batch is currently private" do
       connection = User.connection
 
@@ -150,7 +144,7 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       expect(analytics_connection).to receive(:disable_referential_integrity).once.and_yield
       expect(analytics_connection).to receive(:execute_batch).with(analytics_statements, "FixtureKit Load").once
 
-      coder.mount(records)
+      coder.load(records)
     end
   end
 
