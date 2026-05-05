@@ -43,7 +43,7 @@ module FixtureKit
       @content ||= file_cache.read
 
       FixtureKit.runner.coders.each do |coder|
-        coder.load(content.data_for(coder.class))
+        coder.mount(content.data_for(coder.class))
       end
 
       Repository.new(content.exposed)
@@ -69,7 +69,7 @@ module FixtureKit
         coder, *remaining_coders = coders
 
         parent_data = fixture.parent ? fixture.parent.cache.content.data_for(coder.class) : nil
-        data[coder.class] = coder.save(parent_data: parent_data) do
+        data[coder.class] = coder.generate(parent_data: parent_data) do
           evaluate(remaining_coders, context, data, &block)
         end
       end

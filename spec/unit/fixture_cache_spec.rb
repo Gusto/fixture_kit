@@ -396,12 +396,12 @@ RSpec.describe FixtureKit::Cache do
   describe "with a secondary coder" do
     let(:secondary_coder) do
       klass = Class.new(FixtureKit::Coder) do
-        def save(parent_data: nil, &block)
+        def generate(parent_data: nil, &block)
           yield
           { "key" => "value" }
         end
 
-        def load(data)
+        def mount(data)
         end
       end
       stub_const("FixtureKit::SecondaryCoder", klass)
@@ -442,7 +442,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
       fixture_cache.clear_memory
 
-      expect_any_instance_of(FixtureKit::SecondaryCoder).to receive(:load).with({ "key" => "value" }).and_call_original
+      expect_any_instance_of(FixtureKit::SecondaryCoder).to receive(:mount).with({ "key" => "value" }).and_call_original
       fixture_cache.load
     end
   end
@@ -450,12 +450,12 @@ RSpec.describe FixtureKit::Cache do
   describe "with a secondary coder that defines custom encode/decode" do
     let(:secondary_coder) do
       klass = Class.new(FixtureKit::Coder) do
-        def save(parent_data: nil, &block)
+        def generate(parent_data: nil, &block)
           yield if block_given?
           { "raw" => "value" }
         end
 
-        def load(data)
+        def mount(data)
         end
 
         def encode(data)
@@ -504,7 +504,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
       fixture_cache.clear_memory
 
-      expect_any_instance_of(FixtureKit::EncodingCoder).to receive(:load).with({ "raw" => "value" }).and_call_original
+      expect_any_instance_of(FixtureKit::EncodingCoder).to receive(:mount).with({ "raw" => "value" }).and_call_original
       fixture_cache.load
     end
   end
