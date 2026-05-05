@@ -9,10 +9,10 @@ module FixtureKit
     def initialize
       @fixture_path = "fixture_kit"
       @cache_path = "tmp/cache/fixture_kit"
-      @adapter_class = FixtureKit::MinitestAdapter
+      @adapter_class = MinitestAdapter
       @adapter_options = {}
       @callbacks = Callbacks.new
-      @coders = Set.new([FixtureKit::ActiveRecordCoder])
+      @coders = Set.new([ActiveRecordCoder])
     end
 
     def register_coder(coder)
