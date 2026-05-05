@@ -4,7 +4,7 @@ module FixtureKit
   class Configuration
     attr_accessor :fixture_path
     attr_accessor :cache_path
-    attr_reader :adapter_options, :callbacks
+    attr_reader :adapter_options, :callbacks, :coders
 
     def initialize
       @fixture_path = "fixture_kit"
@@ -12,6 +12,11 @@ module FixtureKit
       @adapter_class = FixtureKit::MinitestAdapter
       @adapter_options = {}
       @callbacks = Callbacks.new
+      @coders = Set.new([FixtureKit::ActiveRecordCoder])
+    end
+
+    def register_coder(coder)
+      @coders.add(coder)
     end
 
     def adapter(adapter_class = nil, **options)

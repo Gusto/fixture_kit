@@ -41,7 +41,7 @@ module FixtureKit
       end
 
       @data ||= file_cache.read
-      coder.mount(data.records)
+      coder.mount(data.data_for(ActiveRecordCoder))
 
       Repository.new(data.exposed)
     end
@@ -53,7 +53,7 @@ module FixtureKit
         end
 
         @data = MemoryCache.new(
-          records: coder.save(parent_data: fixture.parent ? fixture.parent.cache.data.records : nil),
+          data: { ActiveRecordCoder => coder.save(parent_data: fixture.parent ? fixture.parent.cache.data_for(ActiveRecordCoder) : nil) },
           exposed: file_cache.serialize_exposed(fixture.definition.exposed)
         )
       end

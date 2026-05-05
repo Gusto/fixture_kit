@@ -18,8 +18,10 @@ module FixtureKit
 
     def read
       file_data = JSON.parse(File.read(path))
-      records = file_data.fetch("records").transform_keys do |model_name|
-        ActiveSupport::Inflector.constantize(model_name)
+
+      data = file_data.fetch("data").each_with_object({}) do |(coder_name, coder_data), hash|
+        coder_class = ActiveSupport::Inflector.constantize(coder_name)
+        hash[coder_class] = deserialize_coder_data(coder_class, coder_data)
       end
 
       exposed = file_data.fetch("exposed").each_with_object({}) do |(name, value), hash|
@@ -30,7 +32,7 @@ module FixtureKit
         end
       end
 
-      MemoryCache.new(records: records, exposed: exposed)
+      MemoryCache.new(data: data, exposed: exposed)
     end
 
     def write(data)
@@ -45,6 +47,19 @@ module FixtureKit
         else
           hash[name] = { record.class => record.id }
         end
+      end
+    end
+
+    private
+
+    def deserialize_coder_data(coder_class, coder_data)
+      case coder_class
+      when FixtureKit::ActiveRecordCoder.singleton_class
+        coder_data.transform_keys do |model_name|
+          ActiveSupport::Inflector.constantize(model_name)
+        end
+      else
+        coder_data
       end
     end
   end

@@ -144,7 +144,7 @@ RSpec.describe FixtureKit::Cache do
       path = fixture_cache.path
       expect(File.exist?(path)).to be(true)
       data = JSON.parse(File.read(path))
-      expect(data["records"]).to have_key("User")
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"]).to have_key("User")
       expect(data["exposed"]).to have_key("alice")
     end
 
@@ -167,7 +167,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
 
       data = JSON.parse(File.read(fixture_cache.path))
-      expect(data["records"]).to have_key("User")
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"]).to have_key("User")
 
       User.delete_all
       repository = fixture_cache.load
@@ -194,7 +194,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
 
       data = JSON.parse(File.read(fixture_cache.path))
-      expect(data["records"]).to have_key("User")
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"]).to have_key("User")
 
       User.delete_all
       repository = fixture_cache.load
@@ -219,7 +219,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
 
       data = JSON.parse(File.read(fixture_cache.path))
-      expect(data["records"]["User"]).to be_nil
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"]["User"]).to be_nil
 
       User.create!(name: "Temporary", email: "temporary@example.com")
       fixture_cache.load
@@ -228,7 +228,7 @@ RSpec.describe FixtureKit::Cache do
 
     it "includes parent fixture model records when saving inherited fixtures" do
       parent_cache_data = FixtureKit::MemoryCache.new(
-        records: { User => nil },
+        data: { FixtureKit::ActiveRecordCoder => { User => nil } },
         exposed: {}
       )
       parent_cache = instance_double(FixtureKit::Cache, data: parent_cache_data)
@@ -254,13 +254,13 @@ RSpec.describe FixtureKit::Cache do
       child_cache.save
 
       data = JSON.parse(File.read(child_cache.path))
-      expect(data["records"].keys).to include("User", "Project")
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"].keys).to include("User", "Project")
     end
   end
 
   describe "#clear_memory" do
     it "nils out @data" do
-      cache.instance_variable_set(:@data, FixtureKit::MemoryCache.new(records: {}, exposed: {}))
+      cache.instance_variable_set(:@data, FixtureKit::MemoryCache.new(data: {}, exposed: {}))
 
       cache.clear_memory
 
@@ -331,10 +331,12 @@ RSpec.describe FixtureKit::Cache do
       cache.instance_variable_set(
         :@data,
         FixtureKit::MemoryCache.new(
-          records: {
-            User => user_sql,
-            Project => project_sql,
-            ActivityLog => activity_log_sql
+          data: {
+            FixtureKit::ActiveRecordCoder => {
+              User => user_sql,
+              Project => project_sql,
+              ActivityLog => activity_log_sql
+            }
           },
           exposed: {}
         )
