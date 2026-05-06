@@ -146,6 +146,71 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
 
       coder.mount(records)
     end
+
+    context "when ActiveRecord.verify_foreign_keys_for_fixtures is true" do
+      around do |example|
+        previous = ActiveRecord.verify_foreign_keys_for_fixtures
+        ActiveRecord.verify_foreign_keys_for_fixtures = true
+        example.run
+      ensure
+        ActiveRecord.verify_foreign_keys_for_fixtures = previous
+      end
+
+      it "calls check_all_foreign_keys_valid! after the batch executes" do
+        records = { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" }
+        fake_connection = stub_fake_connection
+        stub_pool(User, fake_connection)
+
+        coder.mount(records)
+
+        expect(fake_connection).to have_received(:check_all_foreign_keys_valid!).once
+      end
+
+      it "wraps an FK violation in a FixtureKit::Error with a hint about stale cache" do
+        records = { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" }
+        fake_connection = stub_fake_connection
+        allow(fake_connection).to receive(:check_all_foreign_keys_valid!)
+          .and_raise(ActiveRecord::StatementInvalid, "Foreign key violations found: orders")
+        stub_pool(User, fake_connection)
+
+        expect { coder.mount(records) }.to raise_error(FixtureKit::Error, /cached fixture data.*stale.*Foreign key violations found: orders/m)
+      end
+    end
+
+    context "when ActiveRecord.verify_foreign_keys_for_fixtures is false" do
+      around do |example|
+        previous = ActiveRecord.verify_foreign_keys_for_fixtures
+        ActiveRecord.verify_foreign_keys_for_fixtures = false
+        example.run
+      ensure
+        ActiveRecord.verify_foreign_keys_for_fixtures = previous
+      end
+
+      it "does not call check_all_foreign_keys_valid!" do
+        records = { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" }
+        fake_connection = stub_fake_connection
+        stub_pool(User, fake_connection)
+
+        coder.mount(records)
+
+        expect(fake_connection).not_to have_received(:check_all_foreign_keys_valid!)
+      end
+    end
+
+    def stub_fake_connection
+      fake_connection = double("connection")
+      allow(fake_connection).to receive(:disable_referential_integrity).and_yield
+      allow(fake_connection).to receive(:execute_batch)
+      allow(fake_connection).to receive(:quote_table_name) { |name| %("#{name}") }
+      allow(fake_connection).to receive(:check_all_foreign_keys_valid!)
+      fake_connection
+    end
+
+    def stub_pool(model, connection)
+      pool = double("pool-for-#{model.name}")
+      allow(pool).to receive(:with_connection).and_yield(connection)
+      allow(model).to receive(:connection_pool).and_return(pool)
+    end
   end
 
   describe "sql.active_record payload name format assumptions" do
