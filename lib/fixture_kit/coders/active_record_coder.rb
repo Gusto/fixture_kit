@@ -15,7 +15,10 @@ module FixtureKit
         model_name = name[NAME_PATTERN, :model_name]
         next unless model_name
 
-        captured_models.add(ActiveSupport::Inflector.constantize(model_name))
+        klass = ActiveSupport::Inflector.safe_constantize(model_name)
+        next unless klass.is_a?(Class) && klass < ActiveRecord::Base
+
+        captured_models.add(klass)
       end
 
       ActiveSupport::Notifications.subscribed(subscriber, EVENT, monotonic: true, &block)
@@ -31,7 +34,7 @@ module FixtureKit
         connection.disable_referential_integrity do
           # execute_batch is private in current supported Rails versions.
           # This should be revisited when Rails 8.2 makes it public.
-          connection.__send__(:execute_batch, statements, "FixtureKit Load")
+          connection.__send__(:execute_batch, statements, "FixtureKit Insert")
         end
       end
     end
