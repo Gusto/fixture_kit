@@ -34,6 +34,68 @@ jobs:
       - name: Run tests
         run: bundle exec rspec
 
+  test_db:
+    runs-on: ubuntu-latest
+    name: test (${{ matrix.appraisal }}, ${{ matrix.database }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["4.0"]
+        appraisal: ["rails_8.1"]
+        database: ["postgresql", "mysql2"]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      BUNDLE_GEMFILE: gemfiles/${{ matrix.appraisal }}.gemfile
+      FIXTURE_KIT_INTEGRATION_FRAMEWORK: rspec
+      FIXTURE_KIT_DB: ${{ matrix.database }}
+      FIXTURE_KIT_DB_HOST: ${{ matrix.database == 'mysql2' && '127.0.0.1' || 'localhost' }}
+      FIXTURE_KIT_DB_USERNAME: ${{ matrix.database == 'mysql2' && 'root' || 'postgres' }}
+      FIXTURE_KIT_DB_PASSWORD: ${{ matrix.database == 'mysql2' && 'root' || 'postgres' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby ${{ matrix.ruby }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Install dummy app dependencies
+        working-directory: spec/dummy
+        env:
+          BUNDLE_GEMFILE: ""
+        run: bundle install
+
+      - name: Run tests
+        run: bundle exec rspec
+
   lint:
     runs-on: ubuntu-latest
 
