@@ -1,11 +1,61 @@
+<%
+adapter = ENV.fetch("FIXTURE_KIT_DB", "sqlite3")
+host = ENV.fetch("FIXTURE_KIT_DB_HOST") { adapter == "mysql2" ? "127.0.0.1" : "localhost" }
+username = ENV.fetch("FIXTURE_KIT_DB_USERNAME") do
+  case adapter
+  when "postgresql" then ENV.fetch("USER", "postgres")
+  when "mysql2" then "root"
+  end
+end
+password = ENV["FIXTURE_KIT_DB_PASSWORD"]
+%>
+
 test:
   primary:
+    <% case adapter
+       when "postgresql" %>
+    adapter: postgresql
+    database: fixture_kit_test_primary
+    host: <%= host %>
+    username: <%= username %>
+    password: <%= password %>
+    encoding: unicode
+    pool: 5
+    <% when "mysql2" %>
+    adapter: mysql2
+    database: fixture_kit_test_primary
+    host: <%= host %>
+    username: <%= username %>
+    password: <%= password %>
+    encoding: utf8mb4
+    pool: 5
+    <% else %>
     adapter: sqlite3
     database: tmp/primary_test.sqlite3
     pool: 5
     timeout: 5000
+    <% end %>
   analytics:
+    <% case adapter
+       when "postgresql" %>
+    adapter: postgresql
+    database: fixture_kit_test_analytics
+    host: <%= host %>
+    username: <%= username %>
+    password: <%= password %>
+    encoding: unicode
+    pool: 5
+    <% when "mysql2" %>
+    adapter: mysql2
+    database: fixture_kit_test_analytics
+    host: <%= host %>
+    username: <%= username %>
+    password: <%= password %>
+    encoding: utf8mb4
+    pool: 5
+    <% else %>
     adapter: sqlite3
     database: tmp/analytics_test.sqlite3
     pool: 5
     timeout: 5000
+    <% end %>

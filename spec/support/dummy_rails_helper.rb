@@ -25,21 +25,68 @@ def clear_fixture_cache(fixture_name = nil)
   end
 end
 
+class TestDatabaseBootstrap < ActiveRecord::Base
+  self.abstract_class = true
+end
+
+# Ensure non-sqlite test databases exist before connecting (sqlite files auto-create).
+# Uses a separate connection class so the main ActiveRecord::Base connection
+# is established cleanly later from its own configuration.
+def ensure_test_databases_exist!
+  return if ENV.fetch("FIXTURE_KIT_DB", "sqlite3") == "sqlite3"
+
+  ActiveRecord::Base.configurations.configs_for(env_name: "test").each do |db_config|
+    create_database_if_missing(db_config)
+  end
+end
+
+def create_database_if_missing(db_config)
+  config = db_config.configuration_hash.dup
+  database = config[:database]
+
+  case config[:adapter]
+  when "postgresql"
+    config = config.merge(database: "postgres")
+  when "mysql2"
+    config = config.except(:database)
+  else
+    return
+  end
+
+  bootstrap = TestDatabaseBootstrap
+  bootstrap.remove_connection if bootstrap.connected?
+  bootstrap.establish_connection(config)
+  quoted = bootstrap.connection.quote_column_name(database)
+
+  case db_config.adapter
+  when "postgresql"
+    bootstrap.connection.execute("CREATE DATABASE #{quoted}")
+  when "mysql2"
+    bootstrap.connection.execute("CREATE DATABASE IF NOT EXISTS #{quoted}")
+  end
+rescue ActiveRecord::StatementInvalid => e
+  raise unless e.message.include?("already exists")
+ensure
+  TestDatabaseBootstrap.remove_connection if TestDatabaseBootstrap.connected?
+end
+
 # Create schema for both databases
 def setup_databases
+  ensure_test_databases_exist!
+
   ActiveRecord::Base.connection.disable_referential_integrity do
-    ActiveRecord::Base.connection.drop_table(:comments, if_exists: true)
-    ActiveRecord::Base.connection.drop_table(:tasks, if_exists: true)
-    ActiveRecord::Base.connection.drop_table(:projects, if_exists: true)
-    ActiveRecord::Base.connection.drop_table(:users, if_exists: true)
-    ActiveRecord::Base.connection.drop_table(:vehicles, if_exists: true)
-    ActiveRecord::Base.connection.drop_table(:gadgets, if_exists: true)
-    ActiveRecord::Base.connection.drop_table(:computed_widgets, if_exists: true)
+    ActiveRecord::Base.connection.drop_table(:comments, if_exists: true, force: :cascade)
+    ActiveRecord::Base.connection.drop_table(:tasks, if_exists: true, force: :cascade)
+    ActiveRecord::Base.connection.drop_table(:projects, if_exists: true, force: :cascade)
+    ActiveRecord::Base.connection.drop_table(:users, if_exists: true, force: :cascade)
+    ActiveRecord::Base.connection.drop_table(:vehicles, if_exists: true, force: :cascade)
+    ActiveRecord::Base.connection.drop_table(:gadgets, if_exists: true, force: :cascade)
+    ActiveRecord::Base.connection.drop_table(:computed_widgets, if_exists: true, force: :cascade)
   end
 
   AnalyticsRecord.connection.disable_referential_integrity do
-    AnalyticsRecord.connection.drop_table(:activity_logs, if_exists: true)
-    AnalyticsRecord.connection.drop_table(:time_entries, if_exists: true)
+    AnalyticsRecord.connection.drop_table(:activity_logs, if_exists: true, force: :cascade)
+    AnalyticsRecord.connection.drop_table(:time_entries, if_exists: true, force: :cascade)
   end
 
   # Primary database schema
