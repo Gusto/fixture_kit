@@ -89,6 +89,8 @@ jobs:
 
       - name: Install dummy app dependencies
         working-directory: spec/dummy
+        env:
+          BUNDLE_GEMFILE: ""
         run: bundle install
 
       - name: Run tests
