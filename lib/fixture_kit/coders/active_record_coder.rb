@@ -41,6 +41,8 @@ module FixtureKit
             # This should be revisited when Rails 8.2 makes it public.
             connection.__send__(:execute_batch, statements, "FixtureKit Insert")
           end
+
+          verify_foreign_keys!(connection)
         end
       end
     end
@@ -91,6 +93,19 @@ module FixtureKit
       quoted_columns = columns.map { |c| connection.quote_column_name(c) }
 
       "INSERT INTO #{quoted_table} (#{quoted_columns.join(", ")}) VALUES #{rows.join(", ")}"
+    end
+
+    def verify_foreign_keys!(connection)
+      return unless ActiveRecord.verify_foreign_keys_for_fixtures
+
+      begin
+        connection.check_all_foreign_keys_valid!
+      rescue ActiveRecord::StatementInvalid => e
+        raise FixtureKit::Error,
+          "Foreign key violations found in cached fixture data. The cache may be " \
+          "stale relative to your current schema or fixture definitions. " \
+          "Original error:\n\n#{e.message}"
+      end
     end
 
     def models_by_pool(data)
