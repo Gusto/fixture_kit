@@ -15,7 +15,10 @@ module FixtureKit
         model_name = name[NAME_PATTERN, :model_name]
         next unless model_name
 
-        captured_models.add(ActiveSupport::Inflector.constantize(model_name))
+        klass = ActiveSupport::Inflector.safe_constantize(model_name)
+        next unless klass.is_a?(Class) && klass < ActiveRecord::Base
+
+        captured_models.add(klass)
       end
 
       ActiveSupport::Notifications.subscribed(subscriber, EVENT, monotonic: true, &block)
@@ -36,8 +39,10 @@ module FixtureKit
           connection.disable_referential_integrity do
             # execute_batch is private in current supported Rails versions.
             # This should be revisited when Rails 8.2 makes it public.
-            connection.__send__(:execute_batch, statements, "FixtureKit Load")
+            connection.__send__(:execute_batch, statements, "FixtureKit Insert")
           end
+
+          verify_foreign_keys!(connection)
 
           # Replayed INSERTs use explicit PKs, which Postgres sequences do not
           # observe. Re-sync the sequence so subsequent Model.create calls don't
@@ -94,6 +99,19 @@ module FixtureKit
       quoted_columns = columns.map { |c| connection.quote_column_name(c) }
 
       "INSERT INTO #{quoted_table} (#{quoted_columns.join(", ")}) VALUES #{rows.join(", ")}"
+    end
+
+    def verify_foreign_keys!(connection)
+      return unless ActiveRecord.verify_foreign_keys_for_fixtures
+
+      begin
+        connection.check_all_foreign_keys_valid!
+      rescue ActiveRecord::StatementInvalid => e
+        raise FixtureKit::Error,
+          "Foreign key violations found in cached fixture data. The cache may be " \
+          "stale relative to your current schema or fixture definitions. " \
+          "Original error:\n\n#{e.message}"
+      end
     end
 
     def reset_primary_key_sequences(connection, tables)

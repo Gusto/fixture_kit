@@ -356,9 +356,9 @@ RSpec.describe FixtureKit::Cache do
       ]
 
       expect(primary_connection).to receive(:disable_referential_integrity).once.and_yield
-      expect(primary_connection).to receive(:execute_batch).with(primary_statements, "FixtureKit Load").once
+      expect(primary_connection).to receive(:execute_batch).with(primary_statements, "FixtureKit Insert").once
       expect(analytics_connection).to receive(:disable_referential_integrity).once.and_yield
-      expect(analytics_connection).to receive(:execute_batch).with(analytics_statements, "FixtureKit Load").once
+      expect(analytics_connection).to receive(:execute_batch).with(analytics_statements, "FixtureKit Insert").once
 
       expect(cache.load).to eq(:repository)
     end

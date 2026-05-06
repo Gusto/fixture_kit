@@ -149,9 +149,9 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       ]
 
       expect(primary_connection).to receive(:disable_referential_integrity).once.and_yield
-      expect(primary_connection).to receive(:execute_batch).with(primary_statements, "FixtureKit Load").once
+      expect(primary_connection).to receive(:execute_batch).with(primary_statements, "FixtureKit Insert").once
       expect(analytics_connection).to receive(:disable_referential_integrity).once.and_yield
-      expect(analytics_connection).to receive(:execute_batch).with(analytics_statements, "FixtureKit Load").once
+      expect(analytics_connection).to receive(:execute_batch).with(analytics_statements, "FixtureKit Insert").once
 
       coder.mount(records)
     end
@@ -162,12 +162,8 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
         Project => "INSERT INTO projects (id, name, owner_id) VALUES (1, 'Website', 1)"
       }
 
-      fake_connection = double("connection-with-batched-reset")
-      allow(fake_connection).to receive(:disable_referential_integrity).and_yield
-      allow(fake_connection).to receive(:execute_batch)
-      allow(fake_connection).to receive(:quote_table_name) { |name| %("#{name}") }
+      fake_connection = stub_fake_connection
       allow(fake_connection).to receive(:respond_to?).with(:reset_column_sequences!).and_return(true)
-      allow(fake_connection).to receive(:respond_to?).with(:reset_pk_sequence!).and_return(true)
       allow(fake_connection).to receive(:reset_column_sequences!)
       stub_shared_pool([User, Project], fake_connection)
 
@@ -180,11 +176,7 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     it "falls back to per-table reset_pk_sequence! when reset_column_sequences! is unavailable" do
       records = { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" }
 
-      fake_connection = double("connection-with-per-table-reset")
-      allow(fake_connection).to receive(:disable_referential_integrity).and_yield
-      allow(fake_connection).to receive(:execute_batch)
-      allow(fake_connection).to receive(:quote_table_name) { |name| %("#{name}") }
-      allow(fake_connection).to receive(:respond_to?).with(:reset_column_sequences!).and_return(false)
+      fake_connection = stub_fake_connection
       allow(fake_connection).to receive(:respond_to?).with(:reset_pk_sequence!).and_return(true)
       allow(fake_connection).to receive(:reset_pk_sequence!)
       stub_pool(User, fake_connection)
@@ -197,15 +189,71 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     it "skips PK sequence reset on adapters that expose neither method" do
       records = { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" }
 
-      fake_connection = double("connection-without-reset")
+      fake_connection = stub_fake_connection
+      stub_pool(User, fake_connection)
+
+      expect { coder.mount(records) }.not_to raise_error
+    end
+
+    context "when ActiveRecord.verify_foreign_keys_for_fixtures is true" do
+      around do |example|
+        previous = ActiveRecord.verify_foreign_keys_for_fixtures
+        ActiveRecord.verify_foreign_keys_for_fixtures = true
+        example.run
+      ensure
+        ActiveRecord.verify_foreign_keys_for_fixtures = previous
+      end
+
+      it "calls check_all_foreign_keys_valid! after the batch executes" do
+        records = { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" }
+        fake_connection = stub_fake_connection
+        stub_pool(User, fake_connection)
+
+        coder.mount(records)
+
+        expect(fake_connection).to have_received(:check_all_foreign_keys_valid!).once
+      end
+
+      it "wraps an FK violation in a FixtureKit::Error with a hint about stale cache" do
+        records = { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" }
+        fake_connection = stub_fake_connection
+        allow(fake_connection).to receive(:check_all_foreign_keys_valid!)
+          .and_raise(ActiveRecord::StatementInvalid, "Foreign key violations found: orders")
+        stub_pool(User, fake_connection)
+
+        expect { coder.mount(records) }.to raise_error(FixtureKit::Error, /cached fixture data.*stale.*Foreign key violations found: orders/m)
+      end
+    end
+
+    context "when ActiveRecord.verify_foreign_keys_for_fixtures is false" do
+      around do |example|
+        previous = ActiveRecord.verify_foreign_keys_for_fixtures
+        ActiveRecord.verify_foreign_keys_for_fixtures = false
+        example.run
+      ensure
+        ActiveRecord.verify_foreign_keys_for_fixtures = previous
+      end
+
+      it "does not call check_all_foreign_keys_valid!" do
+        records = { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" }
+        fake_connection = stub_fake_connection
+        stub_pool(User, fake_connection)
+
+        coder.mount(records)
+
+        expect(fake_connection).not_to have_received(:check_all_foreign_keys_valid!)
+      end
+    end
+
+    def stub_fake_connection
+      fake_connection = double("connection")
       allow(fake_connection).to receive(:disable_referential_integrity).and_yield
       allow(fake_connection).to receive(:execute_batch)
       allow(fake_connection).to receive(:quote_table_name) { |name| %("#{name}") }
       allow(fake_connection).to receive(:respond_to?).with(:reset_column_sequences!).and_return(false)
       allow(fake_connection).to receive(:respond_to?).with(:reset_pk_sequence!).and_return(false)
-      stub_pool(User, fake_connection)
-
-      expect { coder.mount(records) }.not_to raise_error
+      allow(fake_connection).to receive(:check_all_foreign_keys_valid!)
+      fake_connection
     end
 
     def stub_pool(model, connection)
