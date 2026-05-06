@@ -156,6 +156,45 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       coder.mount(records)
     end
 
+    it "uses the batched reset_column_sequences! when the adapter exposes it" do
+      records = {
+        User => "INSERT INTO users (id, name) VALUES (1, 'Alice')",
+        Project => "INSERT INTO projects (id, name, owner_id) VALUES (1, 'Website', 1)"
+      }
+
+      fake_connection = stub_fake_connection
+      allow(fake_connection).to receive(:respond_to?).with(:reset_column_sequences!).and_return(true)
+      allow(fake_connection).to receive(:reset_column_sequences!)
+      stub_shared_pool([User, Project], fake_connection)
+
+      coder.mount(records)
+
+      expect(fake_connection).to have_received(:reset_column_sequences!)
+        .with([[User.table_name], [Project.table_name]]).once
+    end
+
+    it "falls back to per-table reset_pk_sequence! when reset_column_sequences! is unavailable" do
+      records = { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" }
+
+      fake_connection = stub_fake_connection
+      allow(fake_connection).to receive(:respond_to?).with(:reset_pk_sequence!).and_return(true)
+      allow(fake_connection).to receive(:reset_pk_sequence!)
+      stub_pool(User, fake_connection)
+
+      coder.mount(records)
+
+      expect(fake_connection).to have_received(:reset_pk_sequence!).with(User.table_name).once
+    end
+
+    it "skips PK sequence reset on adapters that expose neither method" do
+      records = { User => "INSERT INTO users (id, name) VALUES (1, 'Alice')" }
+
+      fake_connection = stub_fake_connection
+      stub_pool(User, fake_connection)
+
+      expect { coder.mount(records) }.not_to raise_error
+    end
+
     context "when ActiveRecord.verify_foreign_keys_for_fixtures is true" do
       around do |example|
         previous = ActiveRecord.verify_foreign_keys_for_fixtures
@@ -212,13 +251,19 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       allow(fake_connection).to receive(:execute_batch)
       allow(fake_connection).to receive(:quote_table_name) { |name| %("#{name}") }
       allow(fake_connection).to receive(:check_all_foreign_keys_valid!)
+      allow(fake_connection).to receive(:respond_to?).with(:reset_column_sequences!).and_return(false)
+      allow(fake_connection).to receive(:respond_to?).with(:reset_pk_sequence!).and_return(false)
       fake_connection
     end
 
     def stub_pool(model, connection)
-      pool = double("pool-for-#{model.name}")
+      stub_shared_pool([model], connection)
+    end
+
+    def stub_shared_pool(models, connection)
+      pool = double("pool-for-#{models.map(&:name).join('-')}")
       allow(pool).to receive(:with_connection).and_yield(connection)
-      allow(model).to receive(:connection_pool).and_return(pool)
+      models.each { |m| allow(m).to receive(:connection_pool).and_return(pool) }
     end
   end
 
