@@ -43,6 +43,12 @@ module FixtureKit
           end
 
           verify_foreign_keys!(connection)
+
+          # Replayed INSERTs use explicit PKs, which Postgres sequences do not
+          # observe. Re-sync the sequence so subsequent Model.create calls don't
+          # collide with an id we just inserted. No-op on adapters whose PK
+          # generators advance from explicit-id INSERTs (MySQL, SQLite).
+          reset_primary_key_sequences(connection, models.map(&:table_name))
         end
       end
     end
@@ -105,6 +111,16 @@ module FixtureKit
           "Foreign key violations found in cached fixture data. The cache may be " \
           "stale relative to your current schema or fixture definitions. " \
           "Original error:\n\n#{e.message}"
+      end
+    end
+
+    def reset_primary_key_sequences(connection, tables)
+      # Rails main (>= 8.2) batches the reset in one round-trip per connection.
+      # Older versions fall back to one query per table.
+      if connection.respond_to?(:reset_column_sequences!)
+        connection.reset_column_sequences!(tables.map { |t| [t] })
+      elsif connection.respond_to?(:reset_pk_sequence!)
+        tables.each { |t| connection.reset_pk_sequence!(t) }
       end
     end
 
