@@ -20,20 +20,29 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       { name: "Bulk Insert 2 #{suffix}", email: "bulk-insert-2-#{suffix}@example.com" }
     ])
 
+    upsert_options = upsert_all_options(User)
+
     User.upsert_all([
       { id: user.id, name: "Upsert #{suffix}", email: "create-#{suffix}@example.com" }
-    ], unique_by: :id)
+    ], **upsert_options)
 
     User.upsert_all([
       { id: user.id, name: "Bulk Upsert Existing #{suffix}", email: "create-#{suffix}@example.com" },
       { id: user.id + 10_000_000, name: "Bulk Upsert New #{suffix}", email: "bulk-upsert-#{suffix}@example.com" }
-    ], unique_by: :id)
+    ], **upsert_options)
 
     doomed = User.create!(name: "Delete #{suffix}", email: "delete-#{suffix}@example.com")
     User.where(id: doomed.id).delete_all
 
     destroyed = User.create!(name: "Destroy #{suffix}", email: "destroy-#{suffix}@example.com")
     destroyed.destroy!
+  end
+
+  # MySQL's upsert uses ON DUPLICATE KEY UPDATE and rejects :unique_by;
+  # Postgres requires it to target the conflict.
+  def upsert_all_options(model)
+    return {} if model.connection.adapter_name.to_s.downcase.start_with?("mysql", "trilogy")
+    { unique_by: :id }
   end
 
   describe "#generate" do
