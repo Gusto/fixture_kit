@@ -60,20 +60,26 @@ module FixtureKit
 
     def generate_statements(models)
       models.each_with_object({}) do |model, statements|
-        columns = model.column_names
+        columns = insertable_columns(model)
+        column_names = columns.map(&:name)
 
         rows = []
         model.unscoped.order(:id).find_each do |record|
-          row_values = columns.map do |col|
+          row_values = column_names.map do |col|
             value = record.read_attribute_before_type_cast(col)
             model.connection.quote(value)
           end
           rows << "(#{row_values.join(", ")})"
         end
 
-        sql = rows.empty? ? nil : build_insert_sql(model.table_name, columns, rows, model.connection)
+        sql = rows.empty? ? nil : build_insert_sql(model.table_name, column_names, rows, model.connection)
         statements[model] = sql
       end
+    end
+
+    def insertable_columns(model)
+      supports_virtual = model.connection.supports_virtual_columns?
+      model.columns.reject { |c| supports_virtual && c.virtual? }
     end
 
     def build_delete_sql(connection, table_name)
