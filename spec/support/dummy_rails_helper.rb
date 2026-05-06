@@ -81,6 +81,7 @@ def setup_databases
     ActiveRecord::Base.connection.drop_table(:users, if_exists: true, force: :cascade)
     ActiveRecord::Base.connection.drop_table(:vehicles, if_exists: true, force: :cascade)
     ActiveRecord::Base.connection.drop_table(:gadgets, if_exists: true, force: :cascade)
+    ActiveRecord::Base.connection.drop_table(:computed_widgets, if_exists: true, force: :cascade)
   end
 
   AnalyticsRecord.connection.disable_referential_integrity do
@@ -132,6 +133,13 @@ def setup_databases
   ActiveRecord::Base.connection.create_table :gadgets, force: true do |t|
     t.string :type, null: false
     t.string :name, null: false
+    t.timestamps
+  end
+
+  ActiveRecord::Base.connection.create_table :computed_widgets, force: true do |t|
+    t.string :name, null: false
+    t.integer :quantity, null: false, default: 0
+    t.virtual :name_upper, type: :string, as: "UPPER(name)", stored: true
     t.timestamps
   end
 

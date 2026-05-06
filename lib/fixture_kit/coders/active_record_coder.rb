@@ -27,19 +27,25 @@ module FixtureKit
     end
 
     def mount(data)
-      statements_by_connection(data).each do |connection, statements|
-        connection.disable_referential_integrity do
-          # execute_batch is private in current supported Rails versions.
-          # This should be revisited when Rails 8.2 makes it public.
-          connection.__send__(:execute_batch, statements, "FixtureKit Load")
+      models_by_pool(data).each do |pool, models|
+        pool.with_connection do |connection|
+          statements = models.flat_map do |model|
+            [build_delete_sql(connection, model.table_name), data[model]].compact
+          end
+
+          connection.disable_referential_integrity do
+            # execute_batch is private in current supported Rails versions.
+            # This should be revisited when Rails 8.2 makes it public.
+            connection.__send__(:execute_batch, statements, "FixtureKit Load")
+          end
+
+          # Replayed INSERTs use explicit PKs, which Postgres sequences do not
+          # observe. Re-sync the sequence so subsequent Model.create calls don't
+          # collide with an id we just inserted. No-op on adapters whose PK
+          # generators advance from explicit-id INSERTs (MySQL, SQLite).
+          reset_primary_key_sequences(connection, models.map(&:table_name))
         end
       end
-
-      # Replayed INSERTs use explicit PKs, which Postgres sequences do not
-      # observe. Re-sync the sequence so subsequent Model.create calls don't
-      # collide with an id we just inserted. No-op on adapters whose PK
-      # generators advance from explicit-id INSERTs (MySQL, SQLite).
-      data.each_key { |model| reset_pk_sequence(model.connection, model.table_name) }
     end
 
     def decode(data)
@@ -57,24 +63,30 @@ module FixtureKit
 
     def generate_statements(models)
       models.each_with_object({}) do |model, statements|
-        columns = model.column_names
+        columns = insertable_columns(model)
+        column_names = columns.map(&:name)
 
         rows = []
         model.unscoped.order(:id).find_each do |record|
-          row_values = columns.map do |col|
+          row_values = column_names.map do |col|
             value = record.read_attribute_before_type_cast(col)
             model.connection.quote(value)
           end
           rows << "(#{row_values.join(", ")})"
         end
 
-        sql = rows.empty? ? nil : build_insert_sql(model.table_name, columns, rows, model.connection)
+        sql = rows.empty? ? nil : build_insert_sql(model.table_name, column_names, rows, model.connection)
         statements[model] = sql
       end
     end
 
-    def build_delete_sql(model)
-      "DELETE FROM #{model.quoted_table_name}"
+    def insertable_columns(model)
+      supports_virtual = model.connection.supports_virtual_columns?
+      model.columns.reject { |c| supports_virtual && c.virtual? }
+    end
+
+    def build_delete_sql(connection, table_name)
+      "DELETE FROM #{connection.quote_table_name(table_name)}"
     end
 
     def build_insert_sql(table_name, columns, rows, connection)
@@ -84,24 +96,25 @@ module FixtureKit
       "INSERT INTO #{quoted_table} (#{quoted_columns.join(", ")}) VALUES #{rows.join(", ")}"
     end
 
-    def reset_pk_sequence(connection, table_name)
-      return unless connection.respond_to?(:reset_pk_sequence!)
-      connection.reset_pk_sequence!(table_name)
+    def reset_primary_key_sequences(connection, tables)
+      # Rails main (>= 8.2) batches the reset in one round-trip per connection.
+      # Older versions fall back to one query per table.
+      if connection.respond_to?(:reset_column_sequences!)
+        connection.reset_column_sequences!(tables.map { |t| [t] })
+      elsif connection.respond_to?(:reset_pk_sequence!)
+        tables.each { |t| connection.reset_pk_sequence!(t) }
+      end
     end
 
-    def statements_by_connection(records)
-      deleted_tables = Set.new
+    def models_by_pool(data)
+      seen = Set.new
 
-      records.each_with_object({}) do |(model, sql), grouped|
-        connection = model.connection
-        grouped[connection] ||= []
+      data.each_with_object({}) do |(model, _), grouped|
+        pool = model.connection_pool
+        next unless seen.add?([pool, model.table_name])
 
-        table_key = [connection, model.table_name]
-        if deleted_tables.add?(table_key)
-          grouped[connection] << build_delete_sql(model)
-        end
-
-        grouped[connection] << sql if sql
+        grouped[pool] ||= []
+        grouped[pool] << model
       end
     end
   end
