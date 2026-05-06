@@ -34,6 +34,12 @@ module FixtureKit
           connection.__send__(:execute_batch, statements, "FixtureKit Load")
         end
       end
+
+      # Replayed INSERTs use explicit PKs, which Postgres sequences do not
+      # observe. Re-sync the sequence so subsequent Model.create calls don't
+      # collide with an id we just inserted. No-op on adapters whose PK
+      # generators advance from explicit-id INSERTs (MySQL, SQLite).
+      data.each_key { |model| reset_pk_sequence(model.connection, model.table_name) }
     end
 
     def decode(data)
@@ -76,6 +82,11 @@ module FixtureKit
       quoted_columns = columns.map { |c| connection.quote_column_name(c) }
 
       "INSERT INTO #{quoted_table} (#{quoted_columns.join(", ")}) VALUES #{rows.join(", ")}"
+    end
+
+    def reset_pk_sequence(connection, table_name)
+      return unless connection.respond_to?(:reset_pk_sequence!)
+      connection.reset_pk_sequence!(table_name)
     end
 
     def statements_by_connection(records)
