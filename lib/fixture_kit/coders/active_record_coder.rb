@@ -30,11 +30,17 @@ module FixtureKit
     end
 
     def mount(data)
-      statements_by_connection(data).each do |connection, statements|
-        connection.disable_referential_integrity do
-          # execute_batch is private in current supported Rails versions.
-          # This should be revisited when Rails 8.2 makes it public.
-          connection.__send__(:execute_batch, statements, "FixtureKit Insert")
+      models_by_pool(data).each do |pool, models|
+        pool.with_connection do |connection|
+          statements = models.flat_map do |model|
+            [build_delete_sql(connection, model.table_name), data[model]].compact
+          end
+
+          connection.disable_referential_integrity do
+            # execute_batch is private in current supported Rails versions.
+            # This should be revisited when Rails 8.2 makes it public.
+            connection.__send__(:execute_batch, statements, "FixtureKit Insert")
+          end
         end
       end
     end
@@ -70,8 +76,8 @@ module FixtureKit
       end
     end
 
-    def build_delete_sql(model)
-      "DELETE FROM #{model.quoted_table_name}"
+    def build_delete_sql(connection, table_name)
+      "DELETE FROM #{connection.quote_table_name(table_name)}"
     end
 
     def build_insert_sql(table_name, columns, rows, connection)
@@ -81,19 +87,15 @@ module FixtureKit
       "INSERT INTO #{quoted_table} (#{quoted_columns.join(", ")}) VALUES #{rows.join(", ")}"
     end
 
-    def statements_by_connection(records)
-      deleted_tables = Set.new
+    def models_by_pool(data)
+      seen = Set.new
 
-      records.each_with_object({}) do |(model, sql), grouped|
-        connection = model.connection
-        grouped[connection] ||= []
+      data.each_with_object({}) do |(model, _), grouped|
+        pool = model.connection_pool
+        next unless seen.add?([pool, model.table_name])
 
-        table_key = [connection, model.table_name]
-        if deleted_tables.add?(table_key)
-          grouped[connection] << build_delete_sql(model)
-        end
-
-        grouped[connection] << sql if sql
+        grouped[pool] ||= []
+        grouped[pool] << model
       end
     end
   end
