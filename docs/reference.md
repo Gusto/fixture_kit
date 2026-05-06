@@ -7,8 +7,9 @@ Canonical API, configuration, and contract reference.
 - **Definition**: `FixtureKit.define { ... }` returns a `FixtureKit::Definition`.
 - **Fixture**: wraps an identifier and a definition; handles cache save/mount.
 - **Cache**: persists and replays SQL for touched models.
+- **Coder**: decides what gets cached during generate and how to replay it on mount. `FixtureKit::ActiveRecordCoder` is registered by default; additional coders can be registered to capture state outside ActiveRecord.
 - **Repository**: exposes records via methods, loaded lazily and memoized per test.
-- **Runner**: owns configuration, registry, startup state, and adapter instance.
+- **Runner**: owns configuration, registry, startup state, and adapter and coder instances.
 
 ## Framework Entrypoints
 
@@ -175,6 +176,61 @@ Default values:
 
 `config.callbacks`
 - Returns callback registry (`FixtureKit::Callbacks`).
+
+`config.coders`
+- Returns the registered coder classes as a `Set`.
+- Default: `Set.new([FixtureKit::ActiveRecordCoder])`.
+
+`config.register(coder_class)`
+- Adds a coder class to the registered set. Coder instances are created lazily once per runner and reused across fixtures.
+
+## Coder Contract
+
+Subclass `FixtureKit::Coder` and implement:
+
+`#generate(parent_data: nil, &block)`
+- Called once when fixture cache is being built.
+- Set up observation, then call the block to evaluate the user's fixture definition (and any inner coders).
+- Return data to be cached for this coder. Will be passed to `#encode` before serialization.
+- `parent_data` is the cached data from the same coder on the parent fixture when `extends:` is used; `nil` otherwise.
+
+`#mount(data)`
+- Called once per test mount with the data this coder produced. Re-create the state on the test database.
+
+`#encode(data)`
+- Convert the in-memory representation produced by `#generate` to a JSON-serializable form. Default: identity.
+
+`#decode(data)`
+- Inverse of `#encode`. Default: identity.
+
+Coder registration:
+
+```ruby
+FixtureKit.configure do |config|
+  config.register(MyCoder)
+end
+```
+
+Chain semantics:
+- Coders form a chain; outer coders wrap inner coders' generate blocks.
+- The innermost block is the user's `FixtureKit.define` body.
+- Order is determined by registration; `ActiveRecordCoder` is registered first by default.
+
+## Foreign Key Verification
+
+When `ActiveRecord.verify_foreign_keys_for_fixtures` is `true` (Rails default since 8.0 `load_defaults`), `FixtureKit::ActiveRecordCoder#mount` calls `connection.check_all_foreign_keys_valid!` after replaying cached statements. A violation raises `FixtureKit::Error` with a stale-cache hint.
+
+- PostgreSQL and SQLite implement the check.
+- MySQL inherits the abstract no-op.
+
+## Primary Key Sequence Reset
+
+After replaying cached INSERTs, `FixtureKit::ActiveRecordCoder#mount` resets the primary key sequence for each touched table:
+- Rails 8.2+: `connection.reset_column_sequences!(tables)` in one batched call per connection.
+- Rails 8.0/8.1: per-table `connection.reset_pk_sequence!(table)`.
+- Adapters that expose neither (MySQL, SQLite): skipped — their PK generators advance from explicit-id INSERTs.
+
+This prevents `PG::UniqueViolation` when fixtures are mounted onto a database whose sequence is at its initial value (e.g., parallel test workers with their own DB copies).
 
 ## Adapter Contract
 
