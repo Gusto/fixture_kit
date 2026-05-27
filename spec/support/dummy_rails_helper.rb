@@ -149,6 +149,7 @@ def setup_databases
     t.binary :payload, limit: 16, null: false
     t.string :label, null: false
     t.json :metadata
+    t.text :secret_note
     t.timestamps
   end
 

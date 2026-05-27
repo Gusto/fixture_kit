@@ -153,6 +153,19 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       expect(replayed.metadata).to eq(metadata)
     end
 
+    it "stores ciphertext, not cleartext, for encrypts attributes" do
+      cleartext = "shhh-this-is-private-#{SecureRandom.hex(4)}"
+      result = coder.generate { BinaryBlob.create!(payload: raw_bytes, label: "encrypted", secret_note: cleartext) }
+
+      sql = result[BinaryBlob]
+      expect(sql).not_to include(cleartext)
+
+      coder.mount(result)
+
+      replayed = BinaryBlob.find_by!(label: "encrypted")
+      expect(replayed.secret_note).to eq(cleartext)
+    end
+
     it "replays a foreign key relationship without integrity errors" do
       result = coder.generate do
         parent = BinaryBlob.create!(payload: raw_bytes, label: "parent")
