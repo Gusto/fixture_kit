@@ -33,6 +33,10 @@ module FixtureKit
       end
 
       MemoryCache.new(data: data, exposed: exposed)
+    rescue JSON::ParserError, KeyError => e
+      raise FixtureKit::CacheCorruptError,
+        "FixtureKit cache file at #{path} is corrupt or malformed (#{e.class}: #{e.message}). " \
+        "Delete it and re-run to regenerate."
     end
 
     def write(data)

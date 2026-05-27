@@ -83,5 +83,23 @@ RSpec.describe FixtureKit::FileCache do
 
       expect(File.exist?(nested_path)).to be(true)
     end
+
+    it "raises CacheCorruptError when the file contains invalid JSON" do
+      FileUtils.mkdir_p(cache_path)
+      File.write(file_path, "this is not json")
+
+      expect { file_cache.read }.to raise_error(FixtureKit::CacheCorruptError) do |error|
+        expect(error.message).to include(file_path)
+        expect(error.message).to include("JSON::ParserError")
+      end
+    end
+
+    it "raises CacheCorruptError when the JSON is missing required keys" do
+      FileUtils.mkdir_p(cache_path)
+      File.write(file_path, JSON.dump({ "data" => {} })) # no "exposed" key
+
+      expect { file_cache.read }
+        .to raise_error(FixtureKit::CacheCorruptError, /is corrupt or malformed.*KeyError/)
+    end
   end
 end
