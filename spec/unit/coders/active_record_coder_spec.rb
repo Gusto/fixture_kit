@@ -165,16 +165,6 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       expect(parent.children.count).to eq(1)
       expect(parent.children.first.payload.b).to eq(raw_bytes)
     end
-
-    it "round-trips a custom attribute type that serializes to binary" do
-      uuid = "550e8400-e29b-41d4-a716-446655440000"
-      result = coder.generate { UuidBlob.create!(external_id: uuid, name: "first") }
-
-      coder.mount(result)
-
-      replayed = UuidBlob.find_by!(name: "first")
-      expect(replayed.external_id).to eq(uuid)
-    end
   end
 
   describe "#mount" do

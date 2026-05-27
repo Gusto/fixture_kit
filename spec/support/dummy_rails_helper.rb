@@ -84,7 +84,6 @@ def setup_databases
     ActiveRecord::Base.connection.drop_table(:computed_widgets, if_exists: true, force: :cascade)
     ActiveRecord::Base.connection.drop_table(:binary_blob_children, if_exists: true, force: :cascade)
     ActiveRecord::Base.connection.drop_table(:binary_blobs, if_exists: true, force: :cascade)
-    ActiveRecord::Base.connection.drop_table(:uuid_blobs, if_exists: true, force: :cascade)
   end
 
   AnalyticsRecord.connection.disable_referential_integrity do
@@ -156,12 +155,6 @@ def setup_databases
   ActiveRecord::Base.connection.create_table :binary_blob_children, force: true do |t|
     t.binary :payload, limit: 16, null: false
     t.references :binary_blob, null: false, foreign_key: true
-    t.timestamps
-  end
-
-  ActiveRecord::Base.connection.create_table :uuid_blobs, force: true do |t|
-    t.binary :external_id, limit: 16, null: false
-    t.string :name, null: false
     t.timestamps
   end
 
