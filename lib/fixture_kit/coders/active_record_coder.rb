@@ -74,7 +74,7 @@ module FixtureKit
         rows = []
         model.unscoped.order(:id).find_each do |record|
           row_values = column_names.map do |col|
-            value = record.read_attribute_before_type_cast(col)
+            value = record.read_attribute_for_database(col)
             model.connection.quote(value)
           end
           rows << "(#{row_values.join(", ")})"

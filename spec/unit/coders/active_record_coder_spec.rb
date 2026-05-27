@@ -115,6 +115,71 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     end
   end
 
+  describe "binary column encoding" do
+    let(:raw_bytes) { (240..255).map(&:chr).join.force_encoding(Encoding::ASCII_8BIT) }
+
+    it "preserves exact bytes when fixtures are mounted from cache" do
+      result = coder.generate { BinaryBlob.create!(payload: raw_bytes, label: "first") }
+
+      coder.mount(result)
+
+      replayed = BinaryBlob.find_by!(label: "first")
+      expect(replayed.payload.b).to eq(raw_bytes)
+    end
+
+    it "round-trips multiple rows with different payloads" do
+      other_bytes = (128..143).map(&:chr).join.force_encoding(Encoding::ASCII_8BIT)
+      result = coder.generate do
+        BinaryBlob.create!(payload: raw_bytes, label: "first")
+        BinaryBlob.create!(payload: other_bytes, label: "second")
+      end
+
+      coder.mount(result)
+
+      expect(BinaryBlob.find_by!(label: "first").payload.b).to eq(raw_bytes)
+      expect(BinaryBlob.find_by!(label: "second").payload.b).to eq(other_bytes)
+    end
+
+    it "round-trips a JSON column alongside binary data" do
+      metadata = {"version" => 2, "tags" => ["alpha", "beta"]}
+      result = coder.generate do
+        BinaryBlob.create!(payload: raw_bytes, label: "with-json", metadata: metadata)
+      end
+
+      coder.mount(result)
+
+      replayed = BinaryBlob.find_by!(label: "with-json")
+      expect(replayed.payload.b).to eq(raw_bytes)
+      expect(replayed.metadata).to eq(metadata)
+    end
+
+    it "stores ciphertext, not cleartext, for encrypts attributes" do
+      cleartext = "shhh-this-is-private-#{SecureRandom.hex(4)}"
+      result = coder.generate { BinaryBlob.create!(payload: raw_bytes, label: "encrypted", secret_note: cleartext) }
+
+      sql = result[BinaryBlob]
+      expect(sql).not_to include(cleartext)
+
+      coder.mount(result)
+
+      replayed = BinaryBlob.find_by!(label: "encrypted")
+      expect(replayed.secret_note).to eq(cleartext)
+    end
+
+    it "replays a foreign key relationship without integrity errors" do
+      result = coder.generate do
+        parent = BinaryBlob.create!(payload: raw_bytes, label: "parent")
+        BinaryBlobChild.create!(binary_blob: parent, payload: raw_bytes)
+      end
+
+      coder.mount(result)
+
+      parent = BinaryBlob.find_by!(label: "parent")
+      expect(parent.children.count).to eq(1)
+      expect(parent.children.first.payload.b).to eq(raw_bytes)
+    end
+  end
+
   describe "#mount" do
     it "documents that connection execute_batch is currently private" do
       connection = User.connection
