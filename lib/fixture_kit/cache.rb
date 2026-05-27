@@ -76,7 +76,7 @@ module FixtureKit
       else
         coder, *remaining_coders = coders
 
-        parent_data = fixture.parent&.cache&.read_content&.data_for(coder.class)
+        parent_data = fixture.parent ? fixture.parent.cache.read_content.data_for(coder.class) : nil
         data[coder.class] = coder.generate(parent_data: parent_data) do
           evaluate(remaining_coders, context, data, &block)
         end
