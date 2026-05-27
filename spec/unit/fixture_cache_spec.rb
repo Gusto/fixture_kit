@@ -231,7 +231,7 @@ RSpec.describe FixtureKit::Cache do
         data: { FixtureKit::ActiveRecordCoder => { User => nil } },
         exposed: {}
       )
-      parent_cache = instance_double(FixtureKit::Cache, content: parent_cache_data)
+      parent_cache = instance_double(FixtureKit::Cache, read_content: parent_cache_data)
       parent_fixture = instance_double(FixtureKit::Fixture, cache: parent_cache)
       allow(parent_fixture).to receive(:mount) do
         User.create!(name: "Parent Owner", email: "parent-owner@example.com")
@@ -252,6 +252,47 @@ RSpec.describe FixtureKit::Cache do
       child_cache = described_class.new(child_fixture)
 
       child_cache.save
+
+      data = JSON.parse(File.read(child_cache.path))
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"].keys).to include("User", "Project")
+    end
+
+    it "loads parent content from disk when child saves without parent in memory" do
+      # Reproduit le scénario "data_for for nil" : un fixture parent a déjà
+      # été persisté sur disque (process précédent), puis un fixture enfant
+      # doit être généré dans un nouveau process où parent.cache.content est nil.
+      parent_definition = FixtureKit::Definition.new do
+        User.create!(name: "Parent Owner", email: "parent-owner-cross-process@example.com")
+      end
+      parent_fixture = instance_double(
+        FixtureKit::Fixture,
+        identifier: "parent_fixture",
+        definition: parent_definition,
+        parent: nil
+      )
+      parent_cache = described_class.new(parent_fixture)
+      parent_cache.save
+      parent_cache.clear_memory # simule un nouveau process : @content = nil mais le fichier existe
+
+      allow(parent_fixture).to receive(:cache).and_return(parent_cache)
+      allow(parent_fixture).to receive(:mount) do
+        User.create!(name: "Parent Owner", email: "parent-owner-cross-process@example.com")
+        FixtureKit::Repository.new({})
+      end
+
+      child_definition = FixtureKit::Definition.new do
+        owner = User.find_by!(email: "parent-owner-cross-process@example.com")
+        Project.create!(name: "Cross-process project", owner: owner)
+      end
+      child_fixture = instance_double(
+        FixtureKit::Fixture,
+        identifier: "child_fixture",
+        definition: child_definition,
+        parent: parent_fixture
+      )
+      child_cache = described_class.new(child_fixture)
+
+      expect { child_cache.save }.not_to raise_error
 
       data = JSON.parse(File.read(child_cache.path))
       expect(data["data"]["FixtureKit::ActiveRecordCoder"].keys).to include("User", "Project")
