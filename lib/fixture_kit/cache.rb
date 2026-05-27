@@ -40,7 +40,7 @@ module FixtureKit
         raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{fixture.identifier}'"
       end
 
-      read_content
+      ensure_content
 
       FixtureKit.runner.coders.each do |coder|
         coder.mount(content.data_for(coder.class))
@@ -52,8 +52,9 @@ module FixtureKit
     # Lazily loads @content from the file cache. Used when content is needed in
     # memory without a full mount (e.g. when a child fixture is being saved and
     # needs the parent's coder data, while the parent itself was already cached
-    # to disk in a previous process and has not yet been mounted).
-    def read_content
+    # to disk in a previous process and has not yet been mounted). Raises if the
+    # cache file is absent or unreadable — callers must guarantee existence.
+    def ensure_content
       @content ||= file_cache.read
     end
 
@@ -76,7 +77,7 @@ module FixtureKit
       else
         coder, *remaining_coders = coders
 
-        parent_data = fixture.parent ? fixture.parent.cache.read_content.data_for(coder.class) : nil
+        parent_data = fixture.parent ? fixture.parent.cache.ensure_content.data_for(coder.class) : nil
         data[coder.class] = coder.generate(parent_data: parent_data) do
           evaluate(remaining_coders, context, data, &block)
         end
