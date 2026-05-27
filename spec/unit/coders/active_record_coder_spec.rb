@@ -115,6 +115,68 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
     end
   end
 
+  describe "binary column encoding" do
+    let(:raw_bytes) { (240..255).map(&:chr).join.force_encoding(Encoding::ASCII_8BIT) }
+
+    it "preserves exact bytes when fixtures are mounted from cache" do
+      result = coder.generate { BinaryBlob.create!(payload: raw_bytes, label: "first") }
+
+      coder.mount(result)
+
+      replayed = BinaryBlob.find_by!(label: "first")
+      expect(replayed.payload.b).to eq(raw_bytes)
+    end
+
+    it "round-trips multiple rows with different payloads" do
+      other_bytes = (128..143).map(&:chr).join.force_encoding(Encoding::ASCII_8BIT)
+      result = coder.generate do
+        BinaryBlob.create!(payload: raw_bytes, label: "first")
+        BinaryBlob.create!(payload: other_bytes, label: "second")
+      end
+
+      coder.mount(result)
+
+      expect(BinaryBlob.find_by!(label: "first").payload.b).to eq(raw_bytes)
+      expect(BinaryBlob.find_by!(label: "second").payload.b).to eq(other_bytes)
+    end
+
+    it "round-trips a JSON column alongside binary data" do
+      metadata = {"version" => 2, "tags" => ["alpha", "beta"]}
+      result = coder.generate do
+        BinaryBlob.create!(payload: raw_bytes, label: "with-json", metadata: metadata)
+      end
+
+      coder.mount(result)
+
+      replayed = BinaryBlob.find_by!(label: "with-json")
+      expect(replayed.payload.b).to eq(raw_bytes)
+      expect(replayed.metadata).to eq(metadata)
+    end
+
+    it "replays a foreign key relationship without integrity errors" do
+      result = coder.generate do
+        parent = BinaryBlob.create!(payload: raw_bytes, label: "parent")
+        BinaryBlobChild.create!(binary_blob: parent, payload: raw_bytes)
+      end
+
+      coder.mount(result)
+
+      parent = BinaryBlob.find_by!(label: "parent")
+      expect(parent.children.count).to eq(1)
+      expect(parent.children.first.payload.b).to eq(raw_bytes)
+    end
+
+    it "round-trips a custom attribute type that serializes to binary" do
+      uuid = "550e8400-e29b-41d4-a716-446655440000"
+      result = coder.generate { UuidBlob.create!(external_id: uuid, name: "first") }
+
+      coder.mount(result)
+
+      replayed = UuidBlob.find_by!(name: "first")
+      expect(replayed.external_id).to eq(uuid)
+    end
+  end
+
   describe "#mount" do
     it "documents that connection execute_batch is currently private" do
       connection = User.connection
