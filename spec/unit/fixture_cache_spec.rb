@@ -258,9 +258,10 @@ RSpec.describe FixtureKit::Cache do
     end
 
     it "loads parent content from disk when child saves without parent in memory" do
-      # Reproduit le scénario "data_for for nil" : un fixture parent a déjà
-      # été persisté sur disque (process précédent), puis un fixture enfant
-      # doit être généré dans un nouveau process où parent.cache.content est nil.
+      # Reproduces the "data_for for nil" scenario: a parent fixture has
+      # already been persisted to disk (previous process), then a child
+      # fixture must be generated in a new process where
+      # parent.cache.content is nil.
       parent_definition = FixtureKit::Definition.new do
         User.create!(name: "Parent Owner", email: "parent-owner-cross-process@example.com")
       end
@@ -272,17 +273,17 @@ RSpec.describe FixtureKit::Cache do
       )
       parent_cache = described_class.new(parent_fixture)
       parent_cache.save
-      parent_cache.clear_memory # simule un nouveau process : @content = nil mais le fichier existe
+      parent_cache.clear_memory # simulates a fresh process: @content = nil but the file exists
 
-      # Précondition : confirme qu'on est bien dans l'état "cache sur disque,
-      # rien en mémoire" — c'est ce que reproduit le bug d'origine.
+      # Precondition: confirms we are really in the "cache on disk, nothing
+      # in memory" state — this is what triggered the original bug.
       expect(parent_cache.content).to be_nil
 
       allow(parent_fixture).to receive(:cache).and_return(parent_cache)
-      # Le stub de mount NE recrée PAS User (la save parente l'a laissé en DB).
-      # Du coup, User n'apparaît dans le child cache QUE via parent_data.keys :
-      # un faux fix qui renverrait parent_data: nil ferait disparaître "User"
-      # de l'assertion ci-dessous.
+      # The mount stub does NOT recreate User (parent_cache.save already left
+      # it in the DB). As a result, User can only appear in the child cache
+      # via parent_data.keys — a faux fix that returned parent_data: nil
+      # would make "User" disappear from the assertion below.
       allow(parent_fixture).to receive(:mount).and_return(FixtureKit::Repository.new({}))
 
       child_definition = FixtureKit::Definition.new do
@@ -364,9 +365,9 @@ RSpec.describe FixtureKit::Cache do
       in_memory = FixtureKit::MemoryCache.new(data: {}, exposed: {})
       cache.instance_variable_set(:@content, in_memory)
 
-      # Pas de fichier sur disque — si ensure_content lit le disque on aurait
-      # Errno::ENOENT. Le fait qu'il retourne sans erreur prouve qu'il sert
-      # bien la version mémoïsée.
+      # No file on disk — if ensure_content read from disk we would get
+      # Errno::ENOENT. The fact that it returns without error proves it is
+      # serving the memoized version.
       expect(File.exist?(cache.path)).to be(false)
       expect(cache.ensure_content).to be(in_memory)
     end
