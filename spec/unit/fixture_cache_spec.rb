@@ -231,7 +231,7 @@ RSpec.describe FixtureKit::Cache do
         data: { FixtureKit::ActiveRecordCoder => { User => nil } },
         exposed: {}
       )
-      parent_cache = instance_double(FixtureKit::Cache, ensure_content: parent_cache_data)
+      parent_cache = instance_double(FixtureKit::Cache, content: parent_cache_data)
       parent_fixture = instance_double(FixtureKit::Fixture, cache: parent_cache)
       allow(parent_fixture).to receive(:mount) do
         User.create!(name: "Parent Owner", email: "parent-owner@example.com")
@@ -260,8 +260,8 @@ RSpec.describe FixtureKit::Cache do
     it "loads parent content from disk when child saves without parent in memory" do
       # Reproduces the "data_for for nil" scenario: a parent fixture has
       # already been persisted to disk (previous process), then a child
-      # fixture must be generated in a new process where
-      # parent.cache.content is nil.
+      # fixture must be generated in a new process where the parent's
+      # content has not been loaded into memory.
       parent_definition = FixtureKit::Definition.new do
         User.create!(name: "Parent Owner", email: "parent-owner-cross-process@example.com")
       end
@@ -276,8 +276,9 @@ RSpec.describe FixtureKit::Cache do
       parent_cache.clear_memory # simulates a fresh process: @content = nil but the file exists
 
       # Precondition: confirms we are really in the "cache on disk, nothing
-      # in memory" state — this is what triggered the original bug.
-      expect(parent_cache.content).to be_nil
+      # in memory" state — this is what triggered the original bug. We assert
+      # @content directly because #content now lazily re-reads from disk.
+      expect(parent_cache.instance_variable_get(:@content)).to be_nil
 
       allow(parent_fixture).to receive(:cache).and_return(parent_cache)
       # The mount stub does NOT recreate User (parent_cache.save already left
@@ -311,7 +312,7 @@ RSpec.describe FixtureKit::Cache do
 
       cache.clear_memory
 
-      expect(cache.content).to be_nil
+      expect(cache.instance_variable_get(:@content)).to be_nil
     end
 
     it "still reports exists? as true when file cache is present" do
@@ -330,7 +331,7 @@ RSpec.describe FixtureKit::Cache do
 
       fixture_cache.clear_memory
 
-      expect(fixture_cache.content).to be_nil
+      expect(fixture_cache.instance_variable_get(:@content)).to be_nil
       expect(fixture_cache.exists?).to be(true)
     end
 
@@ -349,7 +350,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
 
       fixture_cache.clear_memory
-      expect(fixture_cache.content).to be_nil
+      expect(fixture_cache.instance_variable_get(:@content)).to be_nil
 
       User.delete_all
       repository = fixture_cache.load
@@ -360,16 +361,16 @@ RSpec.describe FixtureKit::Cache do
     end
   end
 
-  describe "#ensure_content" do
+  describe "#content" do
     it "returns the memoized @content without touching disk" do
       in_memory = FixtureKit::MemoryCache.new(data: {}, exposed: {})
       cache.instance_variable_set(:@content, in_memory)
 
-      # No file on disk — if ensure_content read from disk we would get
+      # No file on disk — if #content read from disk we would get
       # Errno::ENOENT. The fact that it returns without error proves it is
       # serving the memoized version.
       expect(File.exist?(cache.path)).to be(false)
-      expect(cache.ensure_content).to be(in_memory)
+      expect(cache.content).to be(in_memory)
     end
 
     it "re-reads from disk after clear_memory" do
@@ -387,7 +388,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
       fixture_cache.clear_memory
 
-      reloaded = fixture_cache.ensure_content
+      reloaded = fixture_cache.content
 
       expect(reloaded).to be_a(FixtureKit::MemoryCache)
       expect(reloaded.data_for(FixtureKit::ActiveRecordCoder)).to have_key(User)
@@ -395,7 +396,7 @@ RSpec.describe FixtureKit::Cache do
 
     it "raises when the cache file is absent" do
       expect(File.exist?(cache.path)).to be(false)
-      expect { cache.ensure_content }.to raise_error(Errno::ENOENT)
+      expect { cache.content }.to raise_error(Errno::ENOENT)
     end
   end
 

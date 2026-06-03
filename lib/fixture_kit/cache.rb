@@ -6,7 +6,7 @@ module FixtureKit
 
     include ConfigurationHelper
 
-    attr_reader :fixture, :content
+    attr_reader :fixture
 
     def initialize(fixture)
       @fixture = fixture
@@ -28,7 +28,18 @@ module FixtureKit
     end
 
     def exists?
-      content || file_cache.exists?
+      @content || file_cache.exists?
+    end
+
+    # The cache content, lazily read from disk and memoized. Populated by #load
+    # (mount), #save, or — when neither has run in this process — by reading the
+    # file cache on first access. This is what lets a child fixture pick up its
+    # parent's coder data when the parent was cached to disk in a previous
+    # process and has not yet been mounted. Raises if the file is absent or
+    # unreadable, so callers that have not populated content must guarantee the
+    # file exists (e.g. behind #exists?).
+    def content
+      @content ||= file_cache.read
     end
 
     def clear_memory
@@ -40,22 +51,11 @@ module FixtureKit
         raise FixtureKit::CacheMissingError, "Cache does not exist for fixture '#{fixture.identifier}'"
       end
 
-      ensure_content
-
       FixtureKit.runner.coders.each do |coder|
         coder.mount(content.data_for(coder.class))
       end
 
       Repository.new(content.exposed)
-    end
-
-    # Lazily loads @content from the file cache. Used when content is needed in
-    # memory without a full mount (e.g. when a child fixture is being saved and
-    # needs the parent's coder data, while the parent itself was already cached
-    # to disk in a previous process and has not yet been mounted). Raises if the
-    # cache file is absent or unreadable — callers must guarantee existence.
-    def ensure_content
-      @content ||= file_cache.read
     end
 
     def save
@@ -77,7 +77,7 @@ module FixtureKit
       else
         coder, *remaining_coders = coders
 
-        parent_data = fixture.parent ? fixture.parent.cache.ensure_content.data_for(coder.class) : nil
+        parent_data = fixture.parent ? fixture.parent.cache.content.data_for(coder.class) : nil
         data[coder.class] = coder.generate(parent_data: parent_data) do
           evaluate(remaining_coders, context, data, &block)
         end
