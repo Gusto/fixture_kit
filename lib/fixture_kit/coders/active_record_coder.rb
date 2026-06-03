@@ -8,7 +8,14 @@ module FixtureKit
     EVENT = "sql.active_record"
     NAME_PATTERN = /\A(?<model_name>.+?) (?:(?:Bulk )?(?:Insert|Upsert)|Create|Destroy|(?:Update|Delete)(?: All)?)\z/
 
-    def generate(parent_data: nil, &block)
+    def generate(&block)
+      # DRAFT: instead of taking parent_data, we recapture the parent's models
+      # from #mount, which runs (via parent.mount) inside &block. This relies on
+      # the runner reusing one coder instance across generate and mount, and on
+      # the ordering "mount happens inside this block". Reset per generate so a
+      # previous run's models don't leak in.
+      @replayed_models = Set.new
+
       captured_models = Set.new
       subscriber = lambda do |_event_name, _start, _finish, _id, payload|
         name = payload[:name].to_s
@@ -24,12 +31,20 @@ module FixtureKit
       ActiveSupport::Notifications.subscribed(subscriber, EVENT, monotonic: true, &block)
 
       captured_models.map! { |model| base_table_model(model) }
-      captured_models.merge(parent_data.keys) if parent_data
+      captured_models.merge(@replayed_models)
 
       generate_statements(captured_models)
+    ensure
+      @replayed_models = nil
     end
 
     def mount(data)
+      # Replayed INSERTs are tagged "FixtureKit Insert" below, so the #generate
+      # subscriber cannot see them. When a child fixture is being generated, the
+      # parent is mounted inside the generate block; record the models we replay
+      # so #generate can fold them into the child's captured set.
+      @replayed_models&.merge(data.keys)
+
       models_by_pool(data).each do |pool, models|
         pool.with_connection do |connection|
           statements = models.flat_map do |model|

@@ -258,6 +258,111 @@ RSpec.describe FixtureKit::Cache do
     end
   end
 
+  describe "parent model propagation via #mount (draft: no parent_data)" do
+    # End-to-end exercise of the accumulator approach: a real parent cache is
+    # saved, then "a fresh process" clears it from memory, and the child is
+    # saved with the parent mounted from disk. The parent's models can only
+    # reach the child cache via @replayed_models (recorded in
+    # ActiveRecordCoder#mount), because the replayed INSERTs are tagged
+    # "FixtureKit Insert" and the child's subscriber never sees them. None of
+    # the child definitions below recreate the parent's models with a captured
+    # write, so the assertions are load-bearing.
+    def propagate(parent_id:, child_id:, parent_definition:, child_definition:)
+      parent_fixture = instance_double(
+        FixtureKit::Fixture, identifier: parent_id, definition: parent_definition, parent: nil
+      )
+      parent_cache = described_class.new(parent_fixture)
+      parent_cache.save
+      parent_cache.clear_memory # fresh process: @content nil, file on disk
+
+      allow(parent_fixture).to receive(:cache).and_return(parent_cache)
+      # Real mount: replays the parent's rows through ActiveRecordCoder#mount,
+      # which records the models in @replayed_models.
+      allow(parent_fixture).to receive(:mount) { parent_cache.load }
+
+      child_fixture = instance_double(
+        FixtureKit::Fixture, identifier: child_id, definition: child_definition, parent: parent_fixture
+      )
+      child_cache = described_class.new(child_fixture)
+      child_cache.save
+
+      JSON.parse(File.read(child_cache.path))["data"]["FixtureKit::ActiveRecordCoder"]
+    end
+
+    it "carries a basic parent model into the child cache across processes" do
+      parent_definition = FixtureKit::Definition.new do
+        User.create!(name: "Owner", email: "owner-c@example.com")
+      end
+      child_definition = FixtureKit::Definition.new do
+        owner = User.find_by!(email: "owner-c@example.com")
+        Project.create!(name: "Child Project", owner: owner)
+      end
+
+      data = propagate(
+        parent_id: "parent_basic", child_id: "child_basic",
+        parent_definition: parent_definition, child_definition: child_definition
+      )
+
+      expect(data.keys).to include("User", "Project")
+    end
+
+    it "collapses STI parent models to their base table and carries them" do
+      parent_definition = FixtureKit::Definition.new do
+        User.create!(name: "STI Owner", email: "sti-owner@example.com")
+        Car.create!(name: "Beetle", year: 1968)
+      end
+      child_definition = FixtureKit::Definition.new do
+        owner = User.find_by!(email: "sti-owner@example.com")
+        Project.create!(name: "STI Child Project", owner: owner)
+      end
+
+      data = propagate(
+        parent_id: "parent_sti", child_id: "child_sti",
+        parent_definition: parent_definition, child_definition: child_definition
+      )
+
+      expect(data.keys).to include("User", "Vehicle", "Project")
+      expect(data.keys).not_to include("Car") # collapsed to the base table model
+    end
+
+    it "carries parent models from a second connection pool" do
+      parent_definition = FixtureKit::Definition.new do
+        user = User.create!(name: "MP Owner", email: "mp-owner@example.com")
+        ActivityLog.create!(external_user_id: user.id, action: "signed_in")
+      end
+      child_definition = FixtureKit::Definition.new do
+        owner = User.find_by!(email: "mp-owner@example.com")
+        Project.create!(name: "Multipool Child Project", owner: owner)
+      end
+
+      data = propagate(
+        parent_id: "parent_multipool", child_id: "child_multipool",
+        parent_definition: parent_definition, child_definition: child_definition
+      )
+
+      expect(data.keys).to include("User", "ActivityLog", "Project")
+    end
+
+    it "carries a parent model whose cached sql is nil (delete-only)" do
+      parent_definition = FixtureKit::Definition.new do
+        User.create!(name: "Del Owner", email: "del-owner@example.com")
+        Phone.create!(name: "Doomed").destroy! # STI subclass; base table is gadgets
+      end
+      child_definition = FixtureKit::Definition.new do
+        owner = User.find_by!(email: "del-owner@example.com")
+        Project.create!(name: "Delete Child Project", owner: owner)
+      end
+
+      data = propagate(
+        parent_id: "parent_delete", child_id: "child_delete",
+        parent_definition: parent_definition, child_definition: child_definition
+      )
+
+      expect(data.keys).to include("User", "Gadget", "Project")
+      expect(data["Gadget"]).to be_nil # carried forward even with no rows to insert
+    end
+  end
+
   describe "#clear_memory" do
     it "nils out @content" do
       cache.instance_variable_set(:@content, FixtureKit::MemoryCache.new(data: {}, exposed: {}))

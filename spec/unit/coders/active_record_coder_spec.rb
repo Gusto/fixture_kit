@@ -103,11 +103,16 @@ RSpec.describe FixtureKit::ActiveRecordCoder do
       expect(coder.generate { user.destroy! }[User]).to be_nil
     end
 
-    it "includes models from parent_data that were not directly captured" do
-      User.create!(name: "Alice", email: "alice-parent@example.com")
+    it "folds models replayed via #mount into the captured set" do
+      alice = User.create!(name: "Alice", email: "alice-parent@example.com")
+      # A real serialized payload for the users table (one INSERT for Alice).
+      user_payload = coder.generate { User.where(id: alice.id).update_all(name: "Alice") }
 
-      parent_data = { User => "INSERT INTO users ..." }
-      result = coder.generate(parent_data: parent_data) do
+      # parent.mount runs inside the generate block. Its replayed INSERT is
+      # tagged "FixtureKit Insert", so generate's subscriber never sees User —
+      # it can only enter the result via @replayed_models, recorded by #mount.
+      result = coder.generate do
+        coder.mount(user_payload)
         Project.create!(name: "Project", owner: User.find_by!(email: "alice-parent@example.com"))
       end
 

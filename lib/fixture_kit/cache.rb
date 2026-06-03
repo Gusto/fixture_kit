@@ -68,8 +68,10 @@ module FixtureKit
       else
         coder, *remaining_coders = coders
 
-        parent_data = fixture.parent ? fixture.parent.cache.content.data_for(coder.class) : nil
-        data[coder.class] = coder.generate(parent_data: parent_data) do
+        # No parent_data lookup: the parent's models are recaptured during
+        # parent.mount (called in the leaf branch above) by the coder itself.
+        # See ActiveRecordCoder#generate / #mount.
+        data[coder.class] = coder.generate do
           evaluate(remaining_coders, context, data, &block)
         end
       end

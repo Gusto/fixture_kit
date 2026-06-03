@@ -188,14 +188,15 @@ Default values:
 
 Subclass `FixtureKit::Coder` and implement:
 
-`#generate(parent_data: nil, &block)`
+`#generate(&block)`
 - Called once when fixture cache is being built.
 - Set up observation, then call the block to evaluate the user's fixture definition (and any inner coders).
 - Return data to be cached for this coder. Will be passed to `#encode` before serialization.
-- `parent_data` is the cached data from the same coder on the parent fixture when `extends:` is used; `nil` otherwise.
+- For inherited fixtures (`extends:`), the parent is mounted via `#mount` inside the block. A coder that needs the parent's contribution should record what it replays during `#mount` and fold it into its result here (see `ActiveRecordCoder`). The previous `parent_data:` keyword has been removed.
 
 `#mount(data)`
 - Called once per test mount with the data this coder produced. Re-create the state on the test database.
+- Also runs while a child fixture is being generated (the parent is mounted inside the child's `#generate` block). Coders that need their replayed models reflected in the child cache record them here.
 
 `#encode(data)`
 - Convert the in-memory representation produced by `#generate` to a JSON-serializable form. Default: identity.
