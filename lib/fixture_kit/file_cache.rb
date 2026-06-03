@@ -17,7 +17,7 @@ module FixtureKit
     end
 
     def read
-      content = JSON.parse(File.read(path))
+      content = parse
 
       data = content.fetch("data").to_h do |coder_name, coder_data|
         coder = coder_for(coder_name)
@@ -33,10 +33,6 @@ module FixtureKit
       end
 
       MemoryCache.new(data: data, exposed: exposed)
-    rescue JSON::ParserError, KeyError => e
-      raise FixtureKit::CacheCorruptError,
-        "FixtureKit cache file at #{path} is corrupt or malformed (#{e.class}: #{e.message}). " \
-        "Delete it and re-run to regenerate."
     end
 
     def write(data)
@@ -53,6 +49,19 @@ module FixtureKit
     end
 
     private
+
+    # Reads and parses the cache file, validating that the required top-level
+    # keys are present. The rescue is scoped to just this step so that decode
+    # errors raised later in #read (e.g. an unregistered coder, a configuration
+    # error) are not misreported as a corrupt cache file.
+    def parse
+      content = JSON.parse(File.read(path))
+      content.fetch("data")
+      content.fetch("exposed")
+      content
+    rescue JSON::ParserError, KeyError => e
+      raise FixtureKit::CacheCorruptError.for(path, e)
+    end
 
     def coder_for(class_name)
       @coder_for ||= FixtureKit.runner.coders.index_by { |c| c.class.name }

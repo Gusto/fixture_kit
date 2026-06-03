@@ -373,6 +373,7 @@ Public error classes:
 - `FixtureKit::InvalidFixtureDeclaration`
 - `FixtureKit::MultipleFixtures`
 - `FixtureKit::CacheMissingError`
+- `FixtureKit::CacheCorruptError`
 - `FixtureKit::FixtureDefinitionNotFound`
 - `FixtureKit::RunnerAlreadyStartedError`
 - `FixtureKit::CircularFixtureInheritance`
