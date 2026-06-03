@@ -322,6 +322,7 @@ Public error classes:
 - `FixtureKit::FixtureDefinitionNotFound`
 - `FixtureKit::RunnerAlreadyStartedError`
 - `FixtureKit::CircularFixtureInheritance`
+- `FixtureKit::MissingCoderDataError`
 
 ## Requirements
 
