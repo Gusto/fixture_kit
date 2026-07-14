@@ -30,7 +30,7 @@ jobs:
         run: gem build fixture_kit.gemspec
 
       - name: Push to Cloudsmith
-        run: GEM_HOST_API_KEY="Bearer ${CLOUDSMITH_API_KEY}" gem push fixture_kit-*.gem --host https://ruby.cloudsmith.io/gusto/gusto
+        run: GEM_HOST_API_KEY="Bearer ${CLOUDSMITH_API_KEY}" gem push fixture_kit-*.gem --host https://cloudsmith.io/gusto/gusto
 
       - name: Upload gem to release
         continue-on-error: true  # May fail due to IP allow list restrictions
