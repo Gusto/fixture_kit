@@ -6,12 +6,20 @@ on:
 
 permissions:
   contents: write  # Required for uploading release assets
+  id-token: write  # Required to mint the OIDC token for Cloudsmith auth
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Authenticate with Cloudsmith via OIDC
+        uses: cloudsmith-io/cloudsmith-cli-action@v2
+        with:
+          oidc-namespace: "gusto"
+          oidc-service-slug: "gusto-cloudsmith-write-svc-01"
+          oidc-auth-only: "true"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -21,10 +29,8 @@ jobs:
       - name: Build gem
         run: gem build fixture_kit.gemspec
 
-      - name: Push to RubyGems
-        env:
-          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
-        run: gem push fixture_kit-*.gem
+      - name: Push to Cloudsmith
+        run: GEM_HOST_API_KEY="Bearer ${CLOUDSMITH_API_KEY}" gem push fixture_kit-*.gem --host https://ruby.cloudsmith.io/gusto/gusto
 
       - name: Upload gem to release
         continue-on-error: true  # May fail due to IP allow list restrictions
