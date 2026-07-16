@@ -102,6 +102,15 @@ FixtureKit.define(extends: "project_management") do
 end
 ```
 
+`Repository` responds to `to_hash`, so `parent` can be splatted to re-expose all of the parent's records alongside new ones:
+
+```ruby
+FixtureKit.define(extends: "project_management") do
+  task = Task.create!(project: parent.project, assignee: parent.owner)
+  expose(**parent, task: task)
+end
+```
+
 ### Chained inheritance
 
 Inheritance can be chained — a child can extend a fixture that itself extends another:
