@@ -10,6 +10,10 @@ module FixtureKit
       define_readers
     end
 
+    def to_hash
+      @records.keys.to_h { |name| [name, fetch(name)] }
+    end
+
     private
 
     def define_readers
