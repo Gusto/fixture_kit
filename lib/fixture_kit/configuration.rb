@@ -26,6 +26,12 @@ module FixtureKit
       @adapter_options = options
     end
 
+    # Fires when a fixture is registered, before any caching. The block receives the
+    # Event and the declaring scope (the example group for the RSpec adapter).
+    def on_register(&block)
+      callbacks.register(:register, &block)
+    end
+
     def on_cache_save(&block)
       callbacks.register(:cache_save, &block)
     end

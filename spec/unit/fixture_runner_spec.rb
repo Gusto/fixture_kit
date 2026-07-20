@@ -129,5 +129,21 @@ RSpec.describe FixtureKit::Runner do
 
       expect(registry).to have_received(:add).with(have_attributes(extends: "teams/basic"), scope)
     end
+
+    it "runs on_register callbacks with the fixture event and the declaring scope" do
+      runner = described_class.new
+      received_event = nil
+      received_scope = nil
+      runner.configuration.on_register do |event, declaring_scope|
+        received_event = event
+        received_scope = declaring_scope
+      end
+
+      runner.register(fixture_name, scope)
+
+      expect(received_event).to be_a(FixtureKit::Event)
+      expect(received_event.fixture).to eq(fixture)
+      expect(received_scope).to eq(scope)
+    end
   end
 end

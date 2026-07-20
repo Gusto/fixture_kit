@@ -264,6 +264,12 @@ Options are available via `attr_reader :options` in `FixtureKit::Adapter`.
 
 Register using configuration methods:
 
+`config.on_register { |fixture, scope| ... }`
+- Runs when a fixture is registered (declared), before any caching.
+- `scope` is the declaring context passed to `register`. For the RSpec adapter it is the
+  example group (`describe`/`context`) that declared the fixture, so
+  `scope.metadata[:file_path]` gives the originating spec file.
+
 `config.on_cache_save { |fixture| ... }`
 - Runs before cache save.
 

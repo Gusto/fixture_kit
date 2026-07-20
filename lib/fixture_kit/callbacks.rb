@@ -3,6 +3,7 @@
 module FixtureKit
   class Callbacks
     EVENTS = [
+      :register,
       :cache_save,
       :cache_saved,
       :cache_mount,
