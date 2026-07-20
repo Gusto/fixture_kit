@@ -16,7 +16,9 @@ module FixtureKit
     end
 
     def register(name_or_definition, scope)
-      registry.add(name_or_definition, scope)
+      fixture = registry.add(name_or_definition, scope)
+      configuration.callbacks.run(:register, Event.new(fixture), scope)
+      fixture
     end
 
     def start

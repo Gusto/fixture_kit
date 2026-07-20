@@ -264,6 +264,12 @@ Options are available via `attr_reader :options` in `FixtureKit::Adapter`.
 
 Register using configuration methods:
 
+`config.on_register { |event, scope| ... }`
+- Runs when a fixture is registered (declared), before any caching.
+- `scope` is the declaring context passed to `register`. For the RSpec adapter it is the
+  example group (`describe`/`context`) that declared the fixture, so
+  `scope.metadata[:file_path]` gives the originating spec file.
+
 `config.on_cache_save { |fixture| ... }`
 - Runs before cache save.
 
@@ -278,9 +284,9 @@ Register using configuration methods:
 - Runs after cache mount.
 - `duration` is elapsed seconds as `Float`.
 
-The `fixture` argument is a `FixtureKit::Event` instance. Methods:
-- `fixture.identifier` — String cache identifier (no `.json` suffix).
-- `fixture.path` — file path where the fixture definition block was defined.
+The first block argument (`fixture`/`event` above) is a `FixtureKit::Event` instance. Methods:
+- `event.identifier` — String cache identifier (no `.json` suffix).
+- `event.path` — file path where the fixture definition block was defined.
 
 Behavior:
 - Multiple callbacks per event supported.

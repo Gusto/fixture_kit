@@ -37,6 +37,28 @@ RSpec.describe FixtureKit::Configuration do
     end
   end
 
+  describe "#on_register" do
+    it "defaults to an empty callback list" do
+      expect(described_class.new.on_register).to eq([])
+    end
+
+    it "registers and runs callbacks in order with the event and scope" do
+      configuration = described_class.new
+      callback_one = spy("callback_one")
+      callback_two = spy("callback_two")
+      event = double("event")
+      scope = double("scope")
+
+      configuration.on_register { |e, s| callback_one.call(e, s) }
+      configuration.on_register { |e, s| callback_two.call(e, s) }
+
+      expect(callback_one).to receive(:call).with(event, scope).ordered
+      expect(callback_two).to receive(:call).with(event, scope).ordered
+
+      configuration.callbacks.run(:register, event, scope)
+    end
+  end
+
   describe "#on_cache_save" do
     it "defaults to an empty callback list" do
       expect(described_class.new.on_cache_save).to eq([])
