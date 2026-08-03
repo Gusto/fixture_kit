@@ -16,24 +16,48 @@ RSpec.describe FixtureKit::MinitestAdapter do
 
       expect(captured_test_case_class).to be < ActiveSupport::TestCase
       expect(captured_test_case_class.included_modules).to include(ActiveRecord::TestFixtures)
-      expect(captured_test_case_class.public_instance_methods(false).map(&:to_s))
-        .to include("test_fixture_kit_cache_pregeneration")
     end
 
-    it "builds a fresh harness class for each execute on the same adapter instance" do
-      captured_test_case_classes = []
+    it "defines the pregeneration test method on the instance, not the harness class" do
+      harness_class = nil
+      defined_on_instance = nil
 
-      allow(Minitest::Runnable.runnables).to receive(:delete).and_wrap_original do |original, test_case_class|
-        captured_test_case_classes << test_case_class
-        original.call(test_case_class)
+      described_class.new.execute do |context|
+        harness_class = context.class
+        defined_on_instance = context.singleton_class
+          .instance_methods(false)
+          .include?(described_class::TEST_METHOD)
       end
 
-      adapter = described_class.new
-      adapter.execute { nil }
-      adapter.execute { nil }
+      expect(defined_on_instance).to be(true)
+      expect(harness_class.method_defined?(described_class::TEST_METHOD)).to be(false)
+    end
 
-      expect(captured_test_case_classes.size).to be >= 2
-      expect(captured_test_case_classes[-2]).not_to equal(captured_test_case_classes[-1])
+    it "reuses one harness class across executes on the same adapter instance" do
+      harness_classes = []
+      adapter = described_class.new
+
+      adapter.execute { |context| harness_classes << context.class }
+      adapter.execute { |context| harness_classes << context.class }
+
+      expect(harness_classes.size).to eq(2)
+      expect(harness_classes.first).to equal(harness_classes.last)
+    end
+
+    it "leaves no per-generation state on the reused harness class" do
+      adapter = described_class.new
+      harness_class = nil
+      adapter.execute { |context| harness_class = context.class }
+      snapshot = lambda do
+        [harness_class.instance_variables.sort, harness_class.public_instance_methods(false).sort]
+      end
+      baseline = snapshot.call
+
+      adapter.execute { nil }
+      expect { adapter.execute { raise "harness exploded" } }
+        .to raise_error(RuntimeError, "harness exploded")
+
+      expect(snapshot.call).to eq(baseline)
     end
 
     it "does not leak harness test cases into minitest runnables" do
