@@ -9,6 +9,7 @@ module FixtureKit
   class FixtureDefinitionNotFound < Error; end
   class RunnerAlreadyStartedError < Error; end
   class CircularFixtureInheritance < Error; end
+  class UnpersistedRecordError < Error; end
 
   autoload :VERSION, File.expand_path("fixture_kit/version", __dir__)
   autoload :Configuration, File.expand_path("fixture_kit/configuration", __dir__)

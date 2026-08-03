@@ -48,16 +48,6 @@ module FixtureKit
       File.write(path, JSON.pretty_generate(content))
     end
 
-    def serialize_exposed(exposed)
-      exposed.each_with_object({}) do |(name, record), hash|
-        if record.is_a?(Array)
-          hash[name] = record.map { |record| { record.class => record.id } }
-        else
-          hash[name] = { record.class => record.id }
-        end
-      end
-    end
-
     private
 
     def coder_for(class_name)

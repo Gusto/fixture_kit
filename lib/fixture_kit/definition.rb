@@ -25,11 +25,30 @@ module FixtureKit
           raise FixtureKit::DuplicateNameError, "Name #{name} already exposed"
         end
 
-        @exposed[name] = record
+        @exposed[name] = serialize(name, record)
       end
     end
 
     private
+
+    def serialize(name, record)
+      if record.is_a?(Array)
+        record.map { |item| reference(name, item) }
+      else
+        reference(name, record)
+      end
+    end
+
+    def reference(name, record)
+      unless record.persisted?
+        raise FixtureKit::UnpersistedRecordError,
+          "cannot expose #{name.inspect}: the #{record.class} is not persisted. " \
+          "Exposed records are captured as class/id pairs when `expose` is called, " \
+          "so save the record before exposing it."
+      end
+
+      { record.class => record.id }
+    end
 
     def mixin(parent)
       definition = self
