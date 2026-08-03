@@ -78,6 +78,36 @@ end
 `Definition#expose(**records)`:
 - Exposed names become repository methods.
 - Duplicate exposed names raise `FixtureKit::DuplicateNameError`.
+- Records are captured as class/id pairs at the moment `expose` is called, not
+  at the end of the definition. The record objects themselves are not retained.
+- Exposing a record that is not persisted raises
+  `FixtureKit::UnpersistedRecordError`. This applies to records inside an
+  exposed collection as well, and to records that have been destroyed.
+
+Because capture happens when `expose` is called, expose a record only once it
+has been saved:
+
+```ruby
+FixtureKit.define do
+  user = User.new(name: "Alice")
+  expose(user: user)  # raises FixtureKit::UnpersistedRecordError
+  user.save!
+end
+```
+
+The same timing applies to collections, but an emptied or later-appended
+collection cannot be detected — it is captured as-is:
+
+```ruby
+FixtureKit.define do
+  projects = []
+  expose(projects: projects)          # captured as an empty collection
+  projects << Project.create!(...)    # not reflected in `fixture.projects`
+end
+```
+
+The conventional form -- `expose` as the last statement of the definition --
+avoids both cases.
 
 ## Fixture Inheritance (`extends`)
 
@@ -337,6 +367,7 @@ Public error classes:
 - `FixtureKit::FixtureDefinitionNotFound`
 - `FixtureKit::RunnerAlreadyStartedError`
 - `FixtureKit::CircularFixtureInheritance`
+- `FixtureKit::UnpersistedRecordError`
 
 ## Requirements
 

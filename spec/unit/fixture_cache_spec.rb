@@ -226,6 +226,29 @@ RSpec.describe FixtureKit::Cache do
       expect(User.count).to eq(0)
     end
 
+    # The registry holds every fixture for the life of the process, so a
+    # definition that kept its exposed records would keep their whole object
+    # graph alive until the suite ends.
+    it "caches exposed records as class/id pairs without retaining the records" do
+      fixture_definition = FixtureKit::Definition.new do
+        alice = User.create!(name: "Alice", email: "alice-release@example.com")
+        expose(alice: alice)
+      end
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+
+      fixture_cache.save
+
+      expect(fixture_definition.exposed.fetch(:alice).keys).to eq([User])
+      expect(fixture_definition.exposed.fetch(:alice).values.first).to be_a(Integer)
+      expect(fixture_cache.load.alice.name).to eq("Alice")
+    end
+
     it "includes parent fixture model records when saving inherited fixtures" do
       parent_cache_data = FixtureKit::MemoryCache.new(
         data: { FixtureKit::ActiveRecordCoder => { User => nil } },

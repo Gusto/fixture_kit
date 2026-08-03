@@ -53,7 +53,7 @@ module FixtureKit
       FixtureKit.runner.adapter.execute do |context|
         @content = MemoryCache.new(
           data: evaluate(FixtureKit.runner.coders, context),
-          exposed: file_cache.serialize_exposed(fixture.definition.exposed)
+          exposed: fixture.definition.exposed
         )
       end
 

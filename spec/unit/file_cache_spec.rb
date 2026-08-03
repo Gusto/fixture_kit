@@ -84,23 +84,4 @@ RSpec.describe FixtureKit::FileCache do
       expect(File.exist?(nested_path)).to be(true)
     end
   end
-
-  describe "#serialize_exposed" do
-    it "converts ActiveRecord instances to class/id pairs" do
-      user = User.create!(name: "Alice", email: "alice-file-cache@example.com")
-
-      result = file_cache.serialize_exposed({ alice: user })
-
-      expect(result).to eq({ alice: { User => user.id } })
-    end
-
-    it "converts arrays of ActiveRecord instances" do
-      alice = User.create!(name: "Alice", email: "alice-array@example.com")
-      bob = User.create!(name: "Bob", email: "bob-array@example.com")
-
-      result = file_cache.serialize_exposed({ users: [alice, bob] })
-
-      expect(result).to eq({ users: [{ User => alice.id }, { User => bob.id }] })
-    end
-  end
 end
