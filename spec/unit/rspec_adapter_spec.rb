@@ -58,6 +58,36 @@ RSpec.describe FixtureKit::RSpecAdapter do
       end.to raise_error(RuntimeError, "harness exploded")
     end
 
+    it "reuses one harness example group across executes" do
+      harness_groups = []
+      adapter = described_class.new
+
+      adapter.execute { |context| harness_groups << context.class }
+      adapter.execute { |context| harness_groups << context.class }
+
+      expect(harness_groups.size).to eq(2)
+      expect(harness_groups.first).to equal(harness_groups.last)
+    end
+
+    it "assigns only one RSpec::ExampleGroups constant no matter how many times it runs" do
+      adapter = described_class.new
+      adapter.execute { nil }
+      constants_after_first = RSpec::ExampleGroups.constants.grep(/\AFixtureKit/).size
+
+      3.times { adapter.execute { nil } }
+
+      expect(RSpec::ExampleGroups.constants.grep(/\AFixtureKit/).size)
+        .to eq(constants_after_first)
+    end
+
+    it "does not retain the harness example after running" do
+      harness_group = nil
+
+      described_class.new.execute { |context| harness_group = context.class }
+
+      expect(harness_group.examples).to be_empty
+    end
+
     it "re-raises example.exception when execute returns false" do
       example_group = double("example_group")
       example = instance_double(RSpec::Core::Example)
@@ -66,6 +96,7 @@ RSpec.describe FixtureKit::RSpecAdapter do
 
       allow(::RSpec::Core::ExampleGroup).to receive(:subclass).and_return(example_group)
       allow(example_group).to receive(:example).and_return(example)
+      allow(example_group).to receive(:examples).and_return([])
       allow(example_group).to receive(:new).and_return(instance)
       allow(example).to receive(:run).with(instance, RSpec::Core::NullReporter).and_return(false)
       allow(example).to receive(:exception).and_return(failure)
