@@ -40,9 +40,9 @@ module FixtureKit
     end
 
     def reference(name, record)
-      unless record.persisted?
+      if record.id.nil?
         raise FixtureKit::UnpersistedRecordError,
-          "cannot expose #{name.inspect}: the #{record.class} is not persisted. " \
+          "cannot expose #{name.inspect}: the #{record.class} has no id. " \
           "Exposed records are captured as class/id pairs when `expose` is called, " \
           "so save the record before exposing it."
       end

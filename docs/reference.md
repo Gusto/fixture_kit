@@ -80,9 +80,15 @@ end
 - Duplicate exposed names raise `FixtureKit::DuplicateNameError`.
 - Records are captured as class/id pairs at the moment `expose` is called, not
   at the end of the definition. The record objects themselves are not retained.
-- Exposing a record that is not persisted raises
-  `FixtureKit::UnpersistedRecordError`. This applies to records inside an
-  exposed collection as well, and to records that have been destroyed.
+- Exposing a record with no id raises `FixtureKit::UnpersistedRecordError`.
+  This applies to records inside an exposed collection as well.
+- Only the class and the id are stored, so an unsaved instance carrying the id
+  of a real row is a valid way to expose that row under a different model class
+  than the one that created it:
+
+  ```ruby
+  expose(address: Addresses::Db::Address.new(id: company_address.id))
+  ```
 
 Because capture happens when `expose` is called, expose a record only once it
 has been saved:

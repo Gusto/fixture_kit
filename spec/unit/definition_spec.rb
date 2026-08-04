@@ -101,17 +101,17 @@ RSpec.describe FixtureKit::Definition do
       expect(definition.exposed).to eq({ sedan: { Car => sedan.id } })
     end
 
-    it "raises when the record is not persisted" do
+    it "raises when the record has no id" do
       unsaved = User.new(name: "Alice", email: "alice-unsaved@example.com")
       definition = described_class.new { expose(alice: unsaved) }
 
       expect { definition.evaluate(Object.new) }.to raise_error(
         FixtureKit::UnpersistedRecordError,
-        /cannot expose :alice: the User is not persisted/
+        /cannot expose :alice: the User has no id/
       )
     end
 
-    it "raises when a record inside a collection is not persisted" do
+    it "raises when a record inside a collection has no id" do
       saved = User.create!(name: "Alice", email: "alice-mixed@example.com")
       unsaved = User.new(name: "Bob", email: "bob-mixed@example.com")
       definition = described_class.new { expose(users: [saved, unsaved]) }
@@ -122,13 +122,16 @@ RSpec.describe FixtureKit::Definition do
       )
     end
 
-    it "raises when the record has been destroyed" do
-      destroyed = User.create!(name: "Alice", email: "alice-destroyed@example.com")
-      destroyed.destroy!
-      definition = described_class.new { expose(alice: destroyed) }
+    # Only the class and the id are stored, so an unsaved instance carrying the
+    # id of a real row is a valid way to expose that row under a different
+    # model class than the one that created it.
+    it "accepts an unsaved instance that carries the id of a real row" do
+      alice = User.create!(name: "Alice", email: "alice-reference@example.com")
+      definition = described_class.new { expose(alice: User.new(id: alice.id)) }
 
-      expect { definition.evaluate(Object.new) }
-        .to raise_error(FixtureKit::UnpersistedRecordError)
+      definition.evaluate(Object.new)
+
+      expect(definition.exposed).to eq({ alice: { User => alice.id } })
     end
 
     it "allows an empty collection" do
