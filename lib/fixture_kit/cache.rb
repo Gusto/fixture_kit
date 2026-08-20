@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
+require "digest"
+
 module FixtureKit
   class Cache
     ANONYMOUS_DIRECTORY = "_anonymous"
+    DIGEST_LENGTH = 12
 
     include ConfigurationHelper
 
@@ -22,7 +25,8 @@ module FixtureKit
         if raw_identifier.is_a?(String)
           raw_identifier
         else
-          File.join(ANONYMOUS_DIRECTORY, FixtureKit.runner.adapter.identifier_for(raw_identifier))
+          normalized_scope = FixtureKit.runner.adapter.identifier_for(raw_identifier)
+          File.join(ANONYMOUS_DIRECTORY, "#{normalized_scope}.#{definition_digest}")
         end
       end
     end
@@ -61,6 +65,26 @@ module FixtureKit
     end
 
     private
+
+    # The scope name alone does not identify a declaration site. Test
+    # frameworks derive it from the group description, which is lossy -- RSpec
+    # strips every non-alphanumeric character, so `Foo::Bar` and `"Foo Bar"`
+    # both become `FooBar` -- and, worse, not even unique within a process:
+    # test runners that load specs in batches call RSpec::Core::World#reset
+    # between them, which drops the constants RSpec disambiguates against, so
+    # the first group of a given description in *every* batch takes the
+    # unsuffixed name. The cache directory is cleared once per process, so
+    # without the digest two spec files sharing a top-level description share
+    # this entry, and the second fixture to generate silently mounts the
+    # first's records.
+    #
+    # Joined to the scope with a dot rather than an underscore: scope names are
+    # snake_case, so an underscore leaves no boundary between the two, while a
+    # dot cannot appear in one -- RSpec strips non-alphanumerics from the group
+    # description before it is underscored.
+    def definition_digest
+      Digest::SHA256.hexdigest(fixture.definition.fingerprint)[0, DIGEST_LENGTH]
+    end
 
     def evaluate(coders, context, data = {}, &block)
       if coders.empty?

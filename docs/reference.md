@@ -280,7 +280,7 @@ Subclass `FixtureKit::Adapter` and implement:
 
 `#identifier_for(identifier)`
 - Receives non-string fixture identifier and returns normalized String identifier.
-- `_anonymous/` prefixing is applied by `FixtureKit::Cache`.
+- `_anonymous/` prefixing and the declaration-site digest suffix are applied by `FixtureKit::Cache`.
 
 Adapter initialization:
 
@@ -332,12 +332,21 @@ Cache file path format:
 
 Identifier behavior:
 - Named fixture: identifier is the fixture name string.
-- Anonymous fixture: identifier is `_anonymous/<adapter-normalized-scope>`.
+- Anonymous fixture: identifier is `_anonymous/<adapter-normalized-scope>.<digest>`.
+
+The digest is the first 12 hex characters of a SHA-256 of the declaration site
+(the `fixture` block's file and line, plus its `extends:` target). The scope name
+alone is not unique: test frameworks derive it from the group description, which
+drops non-alphanumeric characters, and test runners that load specs in batches
+call `RSpec::Core::World#reset` between them, which resets the counter RSpec uses
+to disambiguate duplicate descriptions. Without the digest, two spec files
+sharing a top-level description would share one cache entry, and the second
+fixture to generate would mount the first one's records.
 
 Examples:
 - Named: `teams/basic` -> `tmp/cache/fixture_kit/teams/basic.json`
-- Anonymous RSpec: `_anonymous/foo/with_fixture_kit/hello`
-- Anonymous Minitest: `_anonymous/my_feature_test`
+- Anonymous RSpec: `_anonymous/foo/with_fixture_kit/hello.3f2a9c1d4b8e`
+- Anonymous Minitest: `_anonymous/my_feature_test.7c1b0e5a9d24`
 
 ## Runtime API in Tests
 

@@ -13,6 +13,76 @@ RSpec.describe FixtureKit::Registry do
     allow(FixtureKit).to receive(:runner).and_return(runner)
   end
 
+  describe "#claim_cache_identifier" do
+    # Cache identifiers are derived from the declaration site, so two distinct
+    # declarations reaching this point at all means the derivation broke. The
+    # identifiers are stubbed here because that is the only way to get there.
+    def fixture_for(definition, identifier: "_anonymous/same_identifier")
+      instance_double(
+        FixtureKit::Fixture,
+        cache: instance_double(FixtureKit::Cache, identifier: identifier),
+        definition: definition
+      )
+    end
+
+    it "allows a fixture to claim its own identifier repeatedly" do
+      registry = described_class.new
+      fixture = fixture_for(FixtureKit::Definition.new {})
+
+      registry.claim_cache_identifier(fixture)
+
+      expect { registry.claim_cache_identifier(fixture) }.not_to raise_error
+    end
+
+    it "allows two fixtures built from the same declaration to share an identifier" do
+      registry = described_class.new
+      definition_for = -> { FixtureKit::Definition.new {} }
+      registry.claim_cache_identifier(fixture_for(definition_for.call))
+
+      expect do
+        registry.claim_cache_identifier(fixture_for(definition_for.call))
+      end.not_to raise_error
+    end
+
+    it "allows different declarations to hold different identifiers" do
+      registry = described_class.new
+      registry.claim_cache_identifier(fixture_for(FixtureKit::Definition.new {}, identifier: "_anonymous/first"))
+
+      expect do
+        registry.claim_cache_identifier(fixture_for(FixtureKit::Definition.new {}, identifier: "_anonymous/second"))
+      end.not_to raise_error
+    end
+
+    it "raises when two different declarations resolve to one identifier" do
+      registry = described_class.new
+      registry.claim_cache_identifier(fixture_for(FixtureKit::Definition.new {}))
+
+      expect do
+        registry.claim_cache_identifier(fixture_for(FixtureKit::Definition.new {}))
+      end.to raise_error(
+        FixtureKit::CacheIdentifierCollision,
+        %r{both resolve to the cache identifier '_anonymous/same_identifier'}
+      )
+    end
+
+    it "names both declaration sites in the error" do
+      registry = described_class.new
+      first = FixtureKit::Definition.new {}
+      first_line = __LINE__ - 1
+      second = FixtureKit::Definition.new {}
+      second_line = __LINE__ - 1
+
+      registry.claim_cache_identifier(fixture_for(first))
+
+      expect do
+        registry.claim_cache_identifier(fixture_for(second))
+      end.to raise_error(
+        FixtureKit::CacheIdentifierCollision,
+        /#{Regexp.escape("#{__FILE__}:#{first_line}")} and #{Regexp.escape("#{__FILE__}:#{second_line}")}/
+      )
+    end
+  end
+
   describe "#add" do
     it "loads and returns a fixture by name for a scope" do
       registry = described_class.new

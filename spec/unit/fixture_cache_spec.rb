@@ -31,6 +31,23 @@ RSpec.describe FixtureKit::Cache do
     end
   end
 
+  # Two example groups whose descriptions collapse to the same constant name
+  # stringify identically, so the scope alone cannot tell them apart.
+  def colliding_scope
+    Class.new.tap do |scope|
+      allow(scope).to receive(:to_s).and_return("RSpec::ExampleGroups::Foo::WithFixtureKit::Hello")
+    end
+  end
+
+  def anonymous_fixture_double(scope: colliding_scope, definition: FixtureKit::Definition.new {})
+    instance_double(
+      FixtureKit::Fixture,
+      identifier: scope,
+      definition: definition,
+      parent: nil
+    )
+  end
+
   before do
     allow(FixtureKit).to receive(:runner).and_return(runner)
     FileUtils.rm_rf(cache_path)
@@ -58,18 +75,11 @@ RSpec.describe FixtureKit::Cache do
     end
 
     it "normalizes class identifiers for anonymous fixtures" do
-      anonymous_scope = Class.new
-      allow(anonymous_scope).to receive(:to_s).and_return("RSpec::ExampleGroups::Foo::WithFixtureKit::Hello")
-      anonymous_definition = FixtureKit::Definition.new {}
-      anonymous_fixture = instance_double(
-        FixtureKit::Fixture,
-        identifier: anonymous_scope,
-        definition: anonymous_definition,
-        parent: nil
-      )
-      anonymous_cache = described_class.new(anonymous_fixture)
+      anonymous_cache = described_class.new(anonymous_fixture_double)
 
-      expect(anonymous_cache.path).to eq(File.join(cache_path, "_anonymous/foo/with_fixture_kit/hello.json"))
+      expect(anonymous_cache.path).to match(
+        %r{\A#{Regexp.escape(File.join(cache_path, "_anonymous/foo/with_fixture_kit/hello"))}\.[0-9a-f]{12}\.json\z}
+      )
     end
   end
 
@@ -79,36 +89,54 @@ RSpec.describe FixtureKit::Cache do
     end
 
     it "normalizes scope-class identifiers for anonymous fixtures" do
-      anonymous_scope = Class.new
-      allow(anonymous_scope).to receive(:to_s).and_return("RSpec::ExampleGroups::Foo::WithFixtureKit::Hello")
-      anonymous_definition = FixtureKit::Definition.new {}
-      anonymous_fixture = instance_double(
-        FixtureKit::Fixture,
-        identifier: anonymous_scope,
-        definition: anonymous_definition,
-        parent: nil
-      )
-      anonymous_cache = described_class.new(anonymous_fixture)
+      anonymous_cache = described_class.new(anonymous_fixture_double)
 
-      expect(anonymous_cache.identifier).to eq("_anonymous/foo/with_fixture_kit/hello")
+      expect(anonymous_cache.identifier).to match(
+        %r{\A_anonymous/foo/with_fixture_kit/hello\.[0-9a-f]{12}\z}
+      )
     end
 
     it "memoizes normalized anonymous identifiers" do
-      anonymous_scope = Class.new
-      allow(anonymous_scope).to receive(:to_s).and_return("RSpec::ExampleGroups::Foo::WithFixtureKit::Hello")
-      anonymous_definition = FixtureKit::Definition.new {}
-      anonymous_fixture = instance_double(
-        FixtureKit::Fixture,
-        identifier: anonymous_scope,
-        definition: anonymous_definition,
-        parent: nil
-      )
-      anonymous_cache = described_class.new(anonymous_fixture)
+      anonymous_scope = colliding_scope
+      anonymous_cache = described_class.new(anonymous_fixture_double(scope: anonymous_scope))
 
       anonymous_cache.identifier
       anonymous_cache.identifier
 
       expect(anonymous_scope).to have_received(:to_s).once
+    end
+
+    # Test frameworks derive the scope name from the group description, and that
+    # name is neither lossless nor -- under RSpec queue runners that reset the
+    # world between batches -- unique within a process. Two declarations that
+    # stringify the same way must still get their own cache entry, or the second
+    # one to generate silently mounts the first one's records.
+    it "distinguishes anonymous fixtures whose scopes stringify identically" do
+      first = described_class.new(anonymous_fixture_double(definition: FixtureKit::Definition.new {}))
+      second = described_class.new(anonymous_fixture_double(definition: FixtureKit::Definition.new {}))
+
+      expect(first.identifier).not_to eq(second.identifier)
+      expect(first.identifier).to start_with("_anonymous/foo/with_fixture_kit/hello.")
+      expect(second.identifier).to start_with("_anonymous/foo/with_fixture_kit/hello.")
+    end
+
+    # Same declaration site, different parent: sharing a cache entry here would
+    # mount the wrong parent's records.
+    it "distinguishes anonymous fixtures that extend different parents" do
+      definition_for = ->(extends) { FixtureKit::Definition.new(extends: extends) {} }
+
+      first = described_class.new(anonymous_fixture_double(definition: definition_for.call("teams/basic")))
+      second = described_class.new(anonymous_fixture_double(definition: definition_for.call("teams/admin")))
+
+      expect(first.identifier).not_to eq(second.identifier)
+    end
+
+    it "reuses one identifier for the same declaration" do
+      definition = FixtureKit::Definition.new {}
+
+      expect(described_class.new(anonymous_fixture_double(definition: definition)).identifier).to eq(
+        described_class.new(anonymous_fixture_double(definition: definition)).identifier
+      )
     end
   end
 

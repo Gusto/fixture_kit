@@ -139,11 +139,11 @@ RSpec.describe "FixtureKit integration" do
       expect(fixture.anonymous_user.email).to eq("anonymous.fixture@example.com")
 
       normalized_scope = self.class.to_s.sub(/\ARSpec::ExampleGroups::/, "")
-      cache_file = File.join(
-        FixtureKit.runner.configuration.cache_path,
-        "_anonymous/#{ActiveSupport::Inflector.underscore(normalized_scope)}.json"
-      )
-      expect(File.exist?(cache_file)).to be(true)
+      slug = ActiveSupport::Inflector.underscore(normalized_scope)
+      cache_files = Dir.glob(
+        File.join(FixtureKit.runner.configuration.cache_path, "_anonymous/**/*.json")
+      ).grep(%r{/#{Regexp.escape(slug)}\.[0-9a-f]{12}\.json\z})
+      expect(cache_files.size).to eq(1)
 
       puts "FKIT_ASSERT:ANONYMOUS_FIXTURE"
       puts "FKIT_ASSERT:ANONYMOUS_CACHE_PATH"

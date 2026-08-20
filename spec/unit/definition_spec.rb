@@ -60,6 +60,37 @@ RSpec.describe FixtureKit::Definition do
     end
   end
 
+  describe "#location" do
+    it "returns the file and line where the definition block was defined" do
+      definition = described_class.new {}
+
+      expect(definition.location).to eq("#{__FILE__}:#{__LINE__ - 2}")
+    end
+  end
+
+  describe "#fingerprint" do
+    it "differs between declarations on different lines" do
+      first = described_class.new {}
+      second = described_class.new {}
+
+      expect(first.fingerprint).not_to eq(second.fingerprint)
+    end
+
+    it "differs between declarations extending different parents" do
+      definition_for = ->(extends) { described_class.new(extends: extends) {} }
+
+      expect(definition_for.call("teams/basic").fingerprint).not_to eq(
+        definition_for.call("teams/admin").fingerprint
+      )
+    end
+
+    it "matches for two definitions built from the same declaration" do
+      definition_for = -> { described_class.new(extends: "teams/basic") {} }
+
+      expect(definition_for.call.fingerprint).to eq(definition_for.call.fingerprint)
+    end
+  end
+
   describe "#expose" do
     it "raises when the same name is exposed twice" do
       alice = User.create!(name: "Alice", email: "alice-duplicate@example.com")

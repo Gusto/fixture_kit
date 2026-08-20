@@ -14,6 +14,17 @@ module FixtureKit
       @definition.source_location.first
     end
 
+    def location
+      file, line = @definition.source_location
+      "#{file}:#{line}"
+    end
+
+    # Two definitions sharing a fingerprint evaluate the same block against the
+    # same parent, so they are interchangeable and may share a cache entry.
+    def fingerprint
+      "#{location}:#{extends}"
+    end
+
     def evaluate(context, parent: nil)
       context.singleton_class.prepend(mixin(parent))
       context.instance_exec(&@definition)
