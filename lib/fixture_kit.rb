@@ -6,6 +6,7 @@ module FixtureKit
   class InvalidFixtureDeclaration < Error; end
   class MultipleFixtures < Error; end
   class CacheMissingError < Error; end
+  class CacheIdentifierCollision < Error; end
   class FixtureDefinitionNotFound < Error; end
   class RunnerAlreadyStartedError < Error; end
   class CircularFixtureInheritance < Error; end

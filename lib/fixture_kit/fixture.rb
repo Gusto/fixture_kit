@@ -19,6 +19,8 @@ module FixtureKit
     end
 
     def generate(force: false)
+      FixtureKit.runner.registry.claim_cache_identifier(self)
+
       return if @cache.exists? && !force
 
       parent&.generate

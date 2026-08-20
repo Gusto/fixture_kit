@@ -10,7 +10,9 @@ module QueueModeSimulation
 
   BATCHES = [
     ["spec/integration/queue_mode/batch_one.rb"],
-    ["spec/integration/queue_mode/batch_two_late.rb"]
+    ["spec/integration/queue_mode/batch_two_late.rb"],
+    ["spec/integration/queue_mode/batch_three_collision.rb"],
+    ["spec/integration/queue_mode/batch_four_collision.rb"]
   ]
 
   def run

@@ -100,11 +100,11 @@ class FixtureKitAnonymousFixtureIntegrationTest < ActiveSupport::TestCase
     assert_equal 1, @anonymous_user_count_in_setup
     assert_equal "anonymous.fixture@example.com", fixture.anonymous_user.email
 
-    cache_file = File.join(
-      FixtureKit.runner.configuration.cache_path,
-      "_anonymous/#{ActiveSupport::Inflector.underscore(self.class.name)}.json"
-    )
-    assert File.exist?(cache_file)
+    slug = ActiveSupport::Inflector.underscore(self.class.name)
+    cache_files = Dir.glob(
+      File.join(FixtureKit.runner.configuration.cache_path, "_anonymous/**/*.json")
+    ).grep(%r{/#{Regexp.escape(slug)}\.[0-9a-f]{12}\.json\z})
+    assert_equal 1, cache_files.size
 
     puts "FKIT_ASSERT:ANONYMOUS_FIXTURE"
     puts "FKIT_ASSERT:ANONYMOUS_CACHE_PATH"

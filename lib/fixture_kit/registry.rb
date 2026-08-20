@@ -8,6 +8,7 @@ module FixtureKit
       @declarations = {}
       @fixtures = {}
       @resolving = []
+      @cache_owners = {}
     end
 
     def add(name_or_definition, scope = nil)
@@ -32,6 +33,23 @@ module FixtureKit
 
     def fixtures
       @fixtures.values
+    end
+
+    # Fixtures sharing a cache identifier share a cache file: the second one to
+    # generate finds the file already written, skips generation, and mounts the
+    # other's records. That is only safe when both declarations are the same, so
+    # anything else has to fail here -- otherwise it surfaces as a confusing
+    # NoMethodError on Repository, or not at all when both expose the same names.
+    # Identifiers are derived from the declaration site, so this is a backstop
+    # against a digest collision or a regression in that derivation.
+    def claim_cache_identifier(fixture)
+      owner = (@cache_owners[fixture.cache.identifier] ||= fixture)
+      return if owner.equal?(fixture)
+      return if owner.definition.fingerprint == fixture.definition.fingerprint
+
+      raise FixtureKit::CacheIdentifierCollision,
+        "fixtures declared at #{owner.definition.location} and #{fixture.definition.location} " \
+        "both resolve to the cache identifier '#{fixture.cache.identifier}'"
     end
 
     private
