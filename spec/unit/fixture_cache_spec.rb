@@ -307,6 +307,54 @@ RSpec.describe FixtureKit::Cache do
       data = JSON.parse(File.read(child_cache.path))
       expect(data["data"]["FixtureKit::ActiveRecordCoder"].keys).to include("User", "Project")
     end
+
+    it "loads parent content from disk when child saves without parent in memory" do
+      # Reproduces the "data_for for nil" scenario: a parent fixture has
+      # already been persisted to disk (previous process), then a child
+      # fixture must be generated in a new process where the parent's
+      # content has not been loaded into memory.
+      parent_definition = FixtureKit::Definition.new do
+        User.create!(name: "Parent Owner", email: "parent-owner-cross-process@example.com")
+      end
+      parent_fixture = instance_double(
+        FixtureKit::Fixture,
+        identifier: "parent_fixture",
+        definition: parent_definition,
+        parent: nil
+      )
+      parent_cache = described_class.new(parent_fixture)
+      parent_cache.save
+      parent_cache.clear_memory # simulates a fresh process: @content = nil but the file exists
+
+      # Precondition: confirms we are really in the "cache on disk, nothing
+      # in memory" state — this is what triggered the original bug. We assert
+      # @content directly because #content now lazily re-reads from disk.
+      expect(parent_cache.instance_variable_get(:@content)).to be_nil
+
+      allow(parent_fixture).to receive(:cache).and_return(parent_cache)
+      # The mount stub does NOT recreate User (parent_cache.save already left
+      # it in the DB). As a result, User can only appear in the child cache
+      # via parent_data.keys — a faux fix that returned parent_data: nil
+      # would make "User" disappear from the assertion below.
+      allow(parent_fixture).to receive(:mount).and_return(FixtureKit::Repository.new({}))
+
+      child_definition = FixtureKit::Definition.new do
+        owner = User.find_by!(email: "parent-owner-cross-process@example.com")
+        Project.create!(name: "Cross-process project", owner: owner)
+      end
+      child_fixture = instance_double(
+        FixtureKit::Fixture,
+        identifier: "child_fixture",
+        definition: child_definition,
+        parent: parent_fixture
+      )
+      child_cache = described_class.new(child_fixture)
+
+      expect { child_cache.save }.not_to raise_error
+
+      data = JSON.parse(File.read(child_cache.path))
+      expect(data["data"]["FixtureKit::ActiveRecordCoder"].keys).to include("User", "Project")
+    end
   end
 
   describe "#clear_memory" do
@@ -315,7 +363,7 @@ RSpec.describe FixtureKit::Cache do
 
       cache.clear_memory
 
-      expect(cache.content).to be_nil
+      expect(cache.instance_variable_get(:@content)).to be_nil
     end
 
     it "still reports exists? as true when file cache is present" do
@@ -334,7 +382,7 @@ RSpec.describe FixtureKit::Cache do
 
       fixture_cache.clear_memory
 
-      expect(fixture_cache.content).to be_nil
+      expect(fixture_cache.instance_variable_get(:@content)).to be_nil
       expect(fixture_cache.exists?).to be(true)
     end
 
@@ -353,7 +401,7 @@ RSpec.describe FixtureKit::Cache do
       fixture_cache.save
 
       fixture_cache.clear_memory
-      expect(fixture_cache.content).to be_nil
+      expect(fixture_cache.instance_variable_get(:@content)).to be_nil
 
       User.delete_all
       repository = fixture_cache.load
@@ -361,6 +409,45 @@ RSpec.describe FixtureKit::Cache do
       expect(fixture_cache.content).not_to be_nil
       expect(repository.alice).to be_a(User)
       expect(repository.alice.name).to eq("Alice")
+    end
+  end
+
+  describe "#content" do
+    it "returns the memoized @content without touching disk" do
+      in_memory = FixtureKit::MemoryCache.new(data: {}, exposed: {})
+      cache.instance_variable_set(:@content, in_memory)
+
+      # No file on disk — if #content read from disk we would get
+      # Errno::ENOENT. The fact that it returns without error proves it is
+      # serving the memoized version.
+      expect(File.exist?(cache.path)).to be(false)
+      expect(cache.content).to be(in_memory)
+    end
+
+    it "re-reads from disk after clear_memory" do
+      fixture_definition = FixtureKit::Definition.new do
+        alice = User.create!(name: "Alice", email: "alice-ensure@example.com")
+        expose(alice: alice)
+      end
+      fixture_double = instance_double(
+        FixtureKit::Fixture,
+        identifier: fixture_name,
+        definition: fixture_definition,
+        parent: nil
+      )
+      fixture_cache = described_class.new(fixture_double)
+      fixture_cache.save
+      fixture_cache.clear_memory
+
+      reloaded = fixture_cache.content
+
+      expect(reloaded).to be_a(FixtureKit::MemoryCache)
+      expect(reloaded.data_for(FixtureKit::ActiveRecordCoder)).to have_key(User)
+    end
+
+    it "raises when the cache file is absent" do
+      expect(File.exist?(cache.path)).to be(false)
+      expect { cache.content }.to raise_error(Errno::ENOENT)
     end
   end
 
