@@ -93,11 +93,6 @@ RSpec.describe FixtureKit::FileCache do
       expect(Dir.children(cache_path)).to contain_exactly("test_fixture.json")
     end
 
-    # Processes share a cache directory whenever the cache outlives the process
-    # that wrote it: a warm-up run, a preserved cache picked up by a second
-    # suite, workers pointed at one `cache_path`. A reader that catches a
-    # truncate-then-fill write reads a prefix of the JSON and blames the cache,
-    # which looks like corruption rather than a race.
     it "does not expose a partially written file to a concurrent reader" do
       skip "fork is not supported on this platform" unless Process.respond_to?(:fork)
 

@@ -46,13 +46,7 @@ module FixtureKit
       }
 
       FileUtils.mkdir_p(File.dirname(path))
-      # A cache directory can be read by one process while another writes it: a
-      # warm-up process filling the cache before the suite runs, a second suite
-      # started against a preserved cache, or any runner whose workers share
-      # `cache_path`. A plain `File.write` truncates the destination and fills
-      # it back in, so a concurrent reader can catch a prefix of the JSON and
-      # fail to parse it. Writing to a sibling temporary file and renaming it
-      # over the destination publishes the new content in one step.
+      # Atomic so a concurrent reader never sees a partially written file.
       File.atomic_write(path) { |file| file.write(JSON.pretty_generate(content)) }
     end
 
