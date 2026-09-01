@@ -46,7 +46,6 @@ module FixtureKit
       }
 
       FileUtils.mkdir_p(File.dirname(path))
-      # Atomic so a concurrent reader never sees a partially written file.
       File.atomic_write(path) { |file| file.write(JSON.pretty_generate(content)) }
     end
 
