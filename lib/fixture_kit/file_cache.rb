@@ -2,7 +2,7 @@
 
 require "json"
 require "fileutils"
-require "securerandom"
+require "active_support/core_ext/file/atomic"
 require "active_support/inflector"
 
 module FixtureKit
@@ -46,31 +46,17 @@ module FixtureKit
       }
 
       FileUtils.mkdir_p(File.dirname(path))
-      atomically_write(JSON.pretty_generate(content))
+      # A cache directory can be read by one process while another writes it: a
+      # warm-up process filling the cache before the suite runs, a second suite
+      # started against a preserved cache, or any runner whose workers share
+      # `cache_path`. A plain `File.write` truncates the destination and fills
+      # it back in, so a concurrent reader can catch a prefix of the JSON and
+      # fail to parse it. Writing to a sibling temporary file and renaming it
+      # over the destination publishes the new content in one step.
+      File.atomic_write(path) { |file| file.write(JSON.pretty_generate(content)) }
     end
 
     private
-
-    # A cache directory can be read by one process while another writes it: a
-    # warm-up process filling the cache before the suite runs, a second suite
-    # started against a preserved cache, or any runner whose workers share
-    # `cache_path`. `File.write` truncates the destination and fills it back in,
-    # so a reader that opens the file inside that window gets a prefix of the
-    # JSON and fails to parse it -- a corrupt-cache failure with no corrupt cache
-    # behind it. Writing a sibling file and renaming it over the destination
-    # publishes the new content in one step: a concurrent reader sees either the
-    # whole previous file or the whole new one, never a mixture.
-    #
-    # The temporary file is a sibling so the rename stays within one filesystem,
-    # and carries the pid so two processes writing the same fixture cannot
-    # collide on it.
-    def atomically_write(payload)
-      temporary_path = "#{path}.#{Process.pid}.#{SecureRandom.hex(8)}.tmp"
-      File.write(temporary_path, payload)
-      File.rename(temporary_path, path)
-    ensure
-      FileUtils.rm_f(temporary_path) if temporary_path
-    end
 
     def coder_for(class_name)
       @coder_for ||= FixtureKit.runner.coders.index_by { |c| c.class.name }
