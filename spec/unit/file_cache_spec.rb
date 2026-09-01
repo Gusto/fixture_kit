@@ -92,11 +92,15 @@ RSpec.describe FixtureKit::FileCache do
 
     it "publishes the file with File.atomic_write so a concurrent reader never sees a partial write" do
       data = FixtureKit::MemoryCache.new(data: {}, exposed: {})
-      allow(File).to receive(:atomic_write).and_call_original
+      FileUtils.mkdir_p(cache_path)
+      file = File.new(file_path, "w")
+      allow(File).to receive(:atomic_write).and_yield(file)
 
       file_cache.write(data)
+      file.close
 
       expect(File).to have_received(:atomic_write).with(file_path)
+      expect(JSON.parse(File.read(file_path))).to eq({ "data" => {}, "exposed" => {} })
     end
   end
 end
