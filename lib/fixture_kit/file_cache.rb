@@ -17,7 +17,7 @@ module FixtureKit
     end
 
     def read
-      content = JSON.parse(File.read(path))
+      content = parse
 
       data = content.fetch("data").to_h do |coder_name, coder_data|
         coder = coder_for(coder_name)
@@ -49,6 +49,15 @@ module FixtureKit
     end
 
     private
+
+    def parse
+      content = JSON.parse(File.read(path))
+      content.fetch("data")
+      content.fetch("exposed")
+      content
+    rescue JSON::ParserError, KeyError => error
+      raise FixtureKit::CacheCorruptError.for(path, error)
+    end
 
     def coder_for(class_name)
       @coder_for ||= FixtureKit.runner.coders.index_by { |c| c.class.name }

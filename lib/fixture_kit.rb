@@ -7,6 +7,14 @@ module FixtureKit
   class MultipleFixtures < Error; end
   class CacheMissingError < Error; end
   class CacheIdentifierCollision < Error; end
+  class CacheCorruptError < Error
+    def self.for(path, cause)
+      new(
+        "FixtureKit cache file at #{path} is corrupt or malformed " \
+        "(#{cause.class}: #{cause.message}). Delete it and re-run to regenerate."
+      )
+    end
+  end
   class FixtureDefinitionNotFound < Error; end
   class RunnerAlreadyStartedError < Error; end
   class CircularFixtureInheritance < Error; end
