@@ -50,17 +50,13 @@ module FixtureKit
 
     private
 
-    # Reads and parses the cache file, validating that the required top-level
-    # keys are present. The rescue is scoped to just this step so that decode
-    # errors raised later in #read (e.g. an unregistered coder, a configuration
-    # error) are not misreported as a corrupt cache file.
     def parse
       content = JSON.parse(File.read(path))
       content.fetch("data")
       content.fetch("exposed")
       content
-    rescue JSON::ParserError, KeyError => e
-      raise FixtureKit::CacheCorruptError.for(path, e)
+    rescue JSON::ParserError, KeyError => error
+      raise FixtureKit::CacheCorruptError.for(path, error)
     end
 
     def coder_for(class_name)
