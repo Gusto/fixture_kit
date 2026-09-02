@@ -84,6 +84,25 @@ RSpec.describe FixtureKit::FileCache do
       expect(File.exist?(nested_path)).to be(true)
     end
 
+    it "leaves nothing but the cache file behind" do
+      file_cache.write(FixtureKit::MemoryCache.new(data: {}, exposed: {}))
+
+      expect(Dir.children(cache_path)).to contain_exactly("test_fixture.json")
+    end
+
+    it "publishes the file with File.atomic_write so a concurrent reader never sees a partial write" do
+      data = FixtureKit::MemoryCache.new(data: {}, exposed: {})
+      FileUtils.mkdir_p(cache_path)
+      file = File.new(file_path, "w")
+      allow(File).to receive(:atomic_write).and_yield(file)
+
+      file_cache.write(data)
+      file.close
+
+      expect(File).to have_received(:atomic_write).with(file_path)
+      expect(JSON.parse(File.read(file_path))).to eq({ "data" => {}, "exposed" => {} })
+    end
+
     it "raises CacheCorruptError when the file contains invalid JSON" do
       FileUtils.mkdir_p(cache_path)
       File.write(file_path, "this is not json")

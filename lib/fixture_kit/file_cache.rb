@@ -2,6 +2,7 @@
 
 require "json"
 require "fileutils"
+require "active_support/core_ext/file/atomic"
 require "active_support/inflector"
 
 module FixtureKit
@@ -45,7 +46,7 @@ module FixtureKit
       }
 
       FileUtils.mkdir_p(File.dirname(path))
-      File.write(path, JSON.pretty_generate(content))
+      File.atomic_write(path) { |file| file.write(JSON.pretty_generate(content)) }
     end
 
     private
