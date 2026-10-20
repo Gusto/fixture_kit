@@ -348,6 +348,98 @@ Examples:
 - Anonymous RSpec: `_anonymous/foo/with_fixture_kit/hello.3f2a9c1d4b8e`
 - Anonymous Minitest: `_anonymous/my_feature_test.7c1b0e5a9d24`
 
+## Parallel Test Suites
+
+The cache is a directory of JSON files. What makes a parallel run safe is which
+processes share that directory and which of them clear it.
+
+`Runner#start` runs once per process and clears `cache_path` unless
+`FIXTURE_KIT_PRESERVE_CACHE` is truthy. That clear is what keeps a cache from
+outliving the code that produced it.
+
+### Forked workers (Rails `parallelize`)
+
+`ActiveSupport::Testing::Parallelization` forks its workers before Minitest runs
+any suite, and each worker runs individual test methods rather than suites.
+FixtureKit generates from `FixtureKit::Minitest::ClassMethods#run_suite`, so:
+
+- `Runner#start` and every `generate` run in the parent process.
+- Workers only `mount`, reading the files the parent wrote.
+
+One shared `cache_path` is therefore correct, and it is what the default gives
+you. Rails does not set `TEST_ENV_NUMBER` (it names the per-worker databases
+itself), so there is no worker number to key the path on, and adding one would
+only point the workers at directories the parent never writes to.
+
+Each worker owns a database whose sequences sit at their initial value. The PK
+sequence reset described above is what makes the parent's cached INSERTs
+mountable there.
+
+### Process-per-worker runners (`parallel_tests`)
+
+Each worker boots the application and calls `Runner#start`, so every worker
+clears the shared directory, entries the others have generated or are about to
+mount included. Give each worker its own:
+
+```ruby
+config.cache_path = "tmp/cache/fixture_kit/#{ENV["TEST_ENV_NUMBER"]}"
+```
+
+Every worker then generates the fixtures its own share of the suite needs. The
+generation work is duplicated, but the per-process clear keeps working and no
+worker can observe another's files.
+
+### Sharing one directory across processes
+
+Reusing a directory between processes (a warm-up run that fills the cache before
+the suite starts, a CI cache restored between jobs) needs
+`FIXTURE_KIT_PRESERVE_CACHE`, since otherwise the first process to start deletes
+what the previous one left.
+
+Preserving the cache moves invalidation to you. `Cache#exists?` is
+`File.exist?`: a file that exists is used, whatever wrote it and whenever.
+Nothing compares it against the fixture definitions, the factories they call, or
+the schema. A cache written under an older state of the code mounts without
+complaint, and the failure lands wherever those stale records first break
+something rather than at the fixture that produced them.
+
+`cache_path` is the place to bound that. Put a digest of everything the cached
+rows depend on in the path, and a cache written under any other state of the
+code is never read: it is ignored and regenerated.
+
+```ruby
+CACHE_SOURCES = %w[
+  spec/fixture_kit/**/*.rb
+  spec/factories/**/*.rb
+  db/schema.rb
+].freeze
+
+digest = Digest::SHA256.new
+digest << FixtureKit::VERSION
+CACHE_SOURCES.flat_map { |pattern| Rails.root.glob(pattern) }.sort.each do |path|
+  digest << path.to_s << File.binread(path)
+end
+
+FixtureKit.configure do |config|
+  config.cache_path = Rails.root.join("tmp/cache/fixture_kit", digest.hexdigest[0, 16]).to_s
+end
+```
+
+Watch every input the cached rows depend on: the fixture definitions, the
+factories or object mothers they call, the schema file the suite actually loads
+(`db/structure.sql` under `schema_format = :sql`), and any support file that
+configures generation. Hashing each path alongside its content keeps two files
+with identical contents distinct.
+
+Two things to plan for:
+
+- Directories from earlier states of the code are not reclaimed. Deleting one is
+  only safe when no other process could be reading it, so prune them from a task
+  rather than at boot.
+- Any change to any watched file regenerates the whole cache, not only the
+  fixtures that actually changed. Watch the narrowest set of files that still
+  covers the cached rows.
+
 ## Runtime API in Tests
 
 `fixture`
@@ -364,6 +456,7 @@ Examples:
 `FIXTURE_KIT_PRESERVE_CACHE`
 - If truthy, runner start does not clear cache directory.
 - Truthy values (case-insensitive): `1`, `true`, `yes`.
+- Preserving the cache makes invalidation your responsibility; see [Parallel Test Suites](#parallel-test-suites).
 
 ## Error Classes
 
