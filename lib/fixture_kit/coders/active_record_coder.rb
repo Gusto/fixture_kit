@@ -24,6 +24,16 @@ module FixtureKit
       ActiveSupport::Notifications.subscribed(subscriber, EVENT, monotonic: true, &block)
 
       captured_models.map! { |model| base_table_model(model) }
+
+      # parent_data carries the parent fixture's models forward (its keys are the
+      # parent's models). This is required, not redundant: a child replays its
+      # parent's rows by calling parent.mount inside the &block above, but those
+      # INSERTs run through execute_batch tagged "FixtureKit Insert" (see #mount),
+      # which the subscriber can't attribute to a model — so the parent's models
+      # never enter captured_models on their own. Merging them here keeps the
+      # child cache self-contained: it can be mounted without the parent's cache
+      # file present. Don't drop this without also changing how replayed rows are
+      # tagged so the subscriber can recapture them.
       captured_models.merge(parent_data.keys) if parent_data
 
       generate_statements(captured_models)
@@ -39,6 +49,11 @@ module FixtureKit
           connection.disable_referential_integrity do
             # execute_batch is private in current supported Rails versions.
             # This should be revisited when Rails 8.2 makes it public.
+            #
+            # The generic "FixtureKit Insert" tag means these replayed INSERTs
+            # are not attributable to a model by the #generate subscriber. That
+            # is why inherited fixtures pass parent models forward via parent_data
+            # rather than recapturing them here (see #generate).
             connection.__send__(:execute_batch, statements, "FixtureKit Insert")
           end
 
