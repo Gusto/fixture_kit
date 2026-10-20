@@ -2,7 +2,7 @@
 
 module FixtureKit
   class Coder
-    def generate(parent_data: nil, &block)
+    def generate(&block)
       raise NotImplementedError, "#{self.class} must implement #generate"
     end
 
